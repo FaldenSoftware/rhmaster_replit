@@ -1,272 +1,242 @@
-import { useState } from "react";
-import { DashboardLayout } from "@/layouts/dashboard-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { User, Mail, Building, Briefcase, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  Bell, 
-  BadgeCheck, 
-  Lock,
-  Shield,
-  LogOut
-} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export function ClientProfileTab() {
-  return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <ClientProfileTabContent />
-      </div>
-    </DashboardLayout>
-  );
-}
-
-export function ClientProfileTabContent() {
-  const { user, logoutMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState("general");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
   
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  // Dados mockados para o perfil
+  const userProfile = user || {
+    name: "Ana Oliveira",
+    email: "ana.oliveira@example.com",
+    company: "Tech Solutions Inc.",
+    position: "Gerente de Produto",
+    bio: "Profissional com mais de 5 anos de experiência em gestão de produtos digitais. Especialista em metodologias ágeis e desenvolvimento de equipes.",
+    profileImage: "https://randomuser.me/api/portraits/women/68.jpg"
+  };
+
+  const handleSaveProfile = () => {
+    setSaving(true);
+    
+    // Simulando uma chamada de API
+    setTimeout(() => {
+      setSaving(false);
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram atualizadas com sucesso!",
+      });
+    }, 1500);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Perfil */}
-        <div className="md:w-1/3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Seu Perfil</CardTitle>
-              <CardDescription>
-                Gerencie suas informações pessoais
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center py-6">
-              <div className="flex justify-center mb-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src="" alt="Ana Oliveira" />
-                  <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                    AO
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <h3 className="text-xl font-semibold mb-1">Ana Oliveira</h3>
-              <p className="text-sm text-muted-foreground mb-4">ana.oliveira@example.com</p>
-              <div className="space-y-2 text-sm text-left">
-                <div className="flex items-center">
-                  <User className="h-4 w-4 text-primary mr-2" />
-                  <span>Cliente</span>
-                </div>
-                <div className="flex items-center">
-                  <Briefcase className="h-4 w-4 text-primary mr-2" />
-                  <span>Gerente de Marketing</span>
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 text-primary mr-2" />
-                  <span>São Paulo, SP</span>
-                </div>
-                <div className="flex items-center">
-                  <Bell className="h-4 w-4 text-primary mr-2" />
-                  <span>Notificações ativas</span>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handleLogout} variant="outline" className="w-full">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </CardFooter>
-          </Card>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold">Meu Perfil</h2>
+        <p className="text-muted-foreground mt-2">
+          Gerencie suas informações pessoais e preferências
+        </p>
+      </div>
 
-          <Card className="mt-6">
-            <CardHeader className="pb-2">
-              <CardTitle>Progresso de Desenvolvimento</CardTitle>
-              <CardDescription>
-                Seu status atual no programa de desenvolvimento
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="py-4">
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">Testes Comportamentais</span>
-                    <span className="text-sm text-muted-foreground">60%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: "60%" }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">Habilidades de Liderança</span>
-                    <span className="text-sm text-muted-foreground">85%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: "85%" }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">Inteligência Emocional</span>
-                    <span className="text-sm text-muted-foreground">72%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: "72%" }}></div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button variant="secondary" className="w-full">
-                <BadgeCheck className="h-4 w-4 mr-2" />
-                Ver Certificados
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-
-        {/* Configurações */}
-        <div className="md:w-2/3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle>Configurações</CardTitle>
-              <CardDescription>
-                Gerencie suas preferências de conta
-              </CardDescription>
+              <CardTitle>Foto de Perfil</CardTitle>
+              <CardDescription>Esta foto será exibida no seu perfil</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Tabs 
-                value={activeTab} 
-                onValueChange={setActiveTab}
-                className="space-y-4"
-              >
-                <TabsList>
-                  <TabsTrigger value="general">Geral</TabsTrigger>
-                  <TabsTrigger value="notifications">Notificações</TabsTrigger>
-                  <TabsTrigger value="security">Segurança</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="general" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome completo</Label>
-                    <Input id="name" defaultValue="Ana Oliveira" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue="ana.oliveira@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" type="tel" defaultValue="+55 11 98765-4321" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="job">Cargo</Label>
-                    <Input id="job" defaultValue="Gerente de Marketing" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Biografia</Label>
-                    <Textarea 
-                      id="bio" 
-                      defaultValue="Profissional apaixonada por marketing com mais de 5 anos de experiência. Focada em desenvolver minhas habilidades de liderança e comunicação."
-                      className="min-h-[100px]"
-                    />
-                  </div>
-                  <Button className="mt-4">
-                    Salvar alterações
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="notifications" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <h3 className="text-base font-medium">Notificações por email</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Receba atualizações sobre novos testes e resultados por email
-                        </p>
-                      </div>
-                      <Switch defaultChecked={true} />
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <h3 className="text-base font-medium">Lembretes de testes</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Receba lembretes sobre testes com prazo próximo do vencimento
-                        </p>
-                      </div>
-                      <Switch defaultChecked={true} />
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <h3 className="text-base font-medium">Resultados e conquistas</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Receba notificações quando novos resultados e conquistas estiverem disponíveis
-                        </p>
-                      </div>
-                      <Switch defaultChecked={true} />
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="security" className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-base font-medium">Alterar senha</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="current-password">Senha atual</Label>
-                        <Input id="current-password" type="password" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-password">Nova senha</Label>
-                        <Input id="new-password" type="password" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirm-password">Confirmar nova senha</Label>
-                        <Input id="confirm-password" type="password" />
-                      </div>
-                    </div>
-                    <Button className="mt-4">
-                      <Lock className="h-4 w-4 mr-2" />
-                      Atualizar senha
-                    </Button>
-                  </div>
-
-                  <Separator className="my-6" />
-
-                  <div>
-                    <h3 className="text-base font-medium text-destructive">Zona de perigo</h3>
-                    <p className="text-sm text-muted-foreground mt-1 mb-4">
-                      Ao excluir sua conta, todos os seus dados serão permanentemente removidos.
-                      Esta ação não pode ser desfeita.
-                    </p>
-                    <Button variant="destructive">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Excluir conta
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+            <CardContent className="flex flex-col items-center">
+              <div className="w-32 h-32 rounded-full overflow-hidden mb-6 border-4 border-primary/20">
+                <img
+                  src={userProfile.profileImage}
+                  alt={`Foto de perfil de ${userProfile.name}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">Alterar</Button>
+                <Button variant="outline" size="sm" className="text-destructive">Remover</Button>
+              </div>
             </CardContent>
           </Card>
+          
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Informações do Mentor</CardTitle>
+              <CardDescription>Detalhes do seu mentor atual</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg overflow-hidden bg-muted/20 p-4">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden mr-4 border-2 border-primary/20">
+                    <img
+                      src="https://randomuser.me/api/portraits/men/32.jpg"
+                      alt="Foto do mentor"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Marcos Silva</h4>
+                    <p className="text-sm text-muted-foreground">Mentor de Liderança</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>marcos.silva@example.com</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Building className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>RH Master Consultoria</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações Pessoais</CardTitle>
+              <CardDescription>Atualize suas informações pessoais</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome Completo</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="name" 
+                        placeholder="Seu nome completo" 
+                        className="pl-10"
+                        defaultValue={userProfile.name}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="email" 
+                        placeholder="Seu email" 
+                        className="pl-10"
+                        defaultValue={userProfile.email}
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Empresa</Label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="company" 
+                        placeholder="Nome da empresa" 
+                        className="pl-10"
+                        defaultValue={userProfile.company}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Cargo</Label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="position" 
+                        placeholder="Seu cargo atual" 
+                        className="pl-10"
+                        defaultValue={userProfile.position}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Mini Biografia</Label>
+                  <Textarea 
+                    id="bio" 
+                    placeholder="Um breve resumo sobre você"
+                    rows={4}
+                    defaultValue={userProfile.bio}
+                  />
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+          
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Segurança</CardTitle>
+              <CardDescription>Gerencie suas configurações de segurança</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Senha Atual</Label>
+                  <Input 
+                    id="current-password" 
+                    type="password" 
+                    placeholder="Digite sua senha atual"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nova Senha</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      placeholder="Digite a nova senha"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirme a Nova Senha</Label>
+                    <Input 
+                      id="confirm-password" 
+                      type="password" 
+                      placeholder="Confirme a nova senha"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="mt-6 flex justify-end">
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              {saving ? (
+                <>
+                  <Save className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar Alterações
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default ClientProfileTab;

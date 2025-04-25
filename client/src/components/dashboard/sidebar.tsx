@@ -74,6 +74,16 @@ export function Sidebar() {
       label: "Resultados",
       icon: BarChart2,
       href: "/client-dashboard/results",
+    },
+    {
+      label: "Conquistas",
+      icon: Award,
+      href: "/client-dashboard/achievements",
+    },
+    {
+      label: "Meu Perfil",
+      icon: Users,
+      href: "/client-dashboard/profile",
     }
   ];
 

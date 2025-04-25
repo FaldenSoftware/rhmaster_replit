@@ -1,27 +1,8 @@
-import { useState } from "react";
-import { DashboardLayout } from "@/layouts/dashboard-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Filter, Clock, BadgeCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ClipboardList, Eye } from "lucide-react";
 import { TestCard } from "@/components/dashboard/test-card";
+import { Button } from "@/components/ui/button";
 
 export function ClientTestsTab() {
-  return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <ClientTestsTabContent />
-      </div>
-    </DashboardLayout>
-  );
-}
-
-export function ClientTestsTabContent() {
-  const [activeTab, setActiveTab] = useState("assigned");
-  const [searchQuery, setSearchQuery] = useState("");
-
   // Dados mockados para exemplo
   const assignedTests = [
     {
@@ -48,150 +29,114 @@ export function ClientTestsTabContent() {
   const completedTests = [
     {
       id: 3,
-      title: "Análise de Comunicação",
-      description: "Avalia padrões de comunicação e eficácia em diferentes contextos.",
+      title: "Comunicação Assertiva",
+      description: "Avalia suas habilidades de comunicação em diferentes cenários profissionais.",
       status: "completed",
-      completedDate: "2023-04-10T14:35:00",
-      score: 85,
-      estimatedTime: 15,
+      dueDate: "2023-04-15T23:59:59",
+      completedDate: "2023-04-14T14:32:10",
+      estimatedTime: 25,
+      score: 89,
       assignedBy: "Marcos Silva"
     },
     {
       id: 4,
-      title: "Gestão de Conflitos",
-      description: "Avalia estilos de abordagem e resolução de conflitos interpessoais.",
+      title: "Tomada de Decisão",
+      description: "Avalia sua capacidade de tomar decisões eficazes em situações de pressão.",
       status: "completed",
-      completedDate: "2023-03-22T09:15:00",
-      score: 78,
-      estimatedTime: 15,
+      dueDate: "2023-04-05T23:59:59",
+      completedDate: "2023-04-04T10:15:43",
+      estimatedTime: 30,
+      score: 92,
       assignedBy: "Marcos Silva"
     },
     {
       id: 5,
-      title: "Análise de Forças e Fraquezas",
-      description: "Identifica principais pontos fortes e áreas para desenvolvimento pessoal.",
+      title: "Gestão de Conflitos",
+      description: "Avalia como você lida com conflitos e situações de tensão no ambiente de trabalho.",
       status: "completed",
-      completedDate: "2023-03-15T16:45:00",
-      score: 92,
-      estimatedTime: 10,
+      dueDate: "2023-03-25T23:59:59",
+      completedDate: "2023-03-23T16:05:22",
+      estimatedTime: 20,
+      score: 85,
       assignedBy: "Marcos Silva"
     }
   ];
 
-  // Filtrar com base na pesquisa
-  const filteredAssigned = assignedTests.filter(test => 
-    test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    test.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredCompleted = completedTests.filter(test => 
-    test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    test.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Meus Testes</h2>
-        <p className="text-muted-foreground mt-1">
-          Visualize e gerencie os testes atribuídos a você
+        <h2 className="text-3xl font-bold">Meus Testes</h2>
+        <p className="text-muted-foreground mt-2">
+          Visualize e complete seus testes atribuídos
         </p>
       </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar testes..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      
+      <div className="space-y-6">
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold flex items-center">
+              <ClipboardList className="mr-2 h-5 w-5 text-primary" />
+              Testes Pendentes
+            </h3>
+            <Button variant="outline" size="sm">
+              Filtrar
+            </Button>
+          </div>
+          
+          <div className="space-y-4">
+            {assignedTests.length > 0 ? (
+              assignedTests.map(test => (
+                <TestCard
+                  key={test.id}
+                  title={test.title}
+                  description={test.description}
+                  status={test.status as any}
+                  dueDate={test.dueDate}
+                  estimatedTime={test.estimatedTime}
+                  onStart={() => console.log(`Iniciando teste ${test.id}`)}
+                  onContinue={() => console.log(`Continuando teste ${test.id}`)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 border rounded-lg bg-muted/30">
+                <p className="text-muted-foreground">Você não tem testes pendentes no momento.</p>
+              </div>
+            )}
+          </div>
         </div>
-        <Button variant="outline" size="sm">
-          <Filter className="h-4 w-4 mr-2" />
-          Filtrar
-        </Button>
+        
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold flex items-center">
+              <Eye className="mr-2 h-5 w-5 text-primary" />
+              Testes Completados
+            </h3>
+            <Button variant="outline" size="sm">
+              Filtrar
+            </Button>
+          </div>
+          
+          <div className="space-y-4">
+            {completedTests.length > 0 ? (
+              completedTests.map(test => (
+                <TestCard
+                  key={test.id}
+                  title={test.title}
+                  description={test.description}
+                  status={test.status as any}
+                  completedDate={test.completedDate}
+                  score={test.score}
+                  onView={() => console.log(`Visualizando resultados do teste ${test.id}`)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 border rounded-lg bg-muted/30">
+                <p className="text-muted-foreground">Você ainda não completou nenhum teste.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-
-      <Tabs defaultValue="assigned" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="assigned" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span>Pendentes</span>
-            <Badge className="ml-1 bg-primary/90 text-primary-foreground hover:bg-primary/90">
-              {filteredAssigned.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="flex items-center gap-2">
-            <BadgeCheck className="h-4 w-4" />
-            <span>Concluídos</span>
-            <Badge className="ml-1 bg-primary/90 text-primary-foreground hover:bg-primary/90">
-              {filteredCompleted.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="assigned" className="mt-6 space-y-4">
-          {filteredAssigned.length === 0 ? (
-            <Card>
-              <CardContent className="py-8">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <Clock className="h-12 w-12 text-muted-foreground mb-3" />
-                  <h3 className="text-lg font-medium">Nenhum teste pendente</h3>
-                  <p className="text-muted-foreground mt-1 mb-4 max-w-md">
-                    Você não tem testes pendentes ou atribuídos no momento. Quando seu mentor atribuir novos testes, eles aparecerão aqui.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredAssigned.map(test => (
-              <TestCard
-                key={test.id}
-                title={test.title}
-                description={test.description}
-                status={test.status as any}
-                dueDate={test.dueDate}
-                estimatedTime={test.estimatedTime}
-                onStart={() => console.log(`Iniciando teste ${test.id}`)}
-                onContinue={() => console.log(`Continuando teste ${test.id}`)}
-                onView={() => console.log(`Visualizando teste ${test.id}`)}
-              />
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="completed" className="mt-6 space-y-4">
-          {filteredCompleted.length === 0 ? (
-            <Card>
-              <CardContent className="py-8">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <BadgeCheck className="h-12 w-12 text-muted-foreground mb-3" />
-                  <h3 className="text-lg font-medium">Nenhum teste concluído</h3>
-                  <p className="text-muted-foreground mt-1 mb-4 max-w-md">
-                    Você ainda não concluiu nenhum teste. Comece completando os testes pendentes atribuídos a você.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredCompleted.map(test => (
-              <TestCard
-                key={test.id}
-                title={test.title}
-                description={test.description}
-                status={test.status as any}
-                completedDate={test.completedDate}
-                score={test.score}
-                onView={() => console.log(`Visualizando resultado do teste ${test.id}`)}
-              />
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
-
-export default ClientTestsTab;
