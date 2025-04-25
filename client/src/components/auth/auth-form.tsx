@@ -27,6 +27,7 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   username: z.string().min(1, "Nome de usuário é obrigatório"),
+  email: z.string().email("Informe um e-mail válido").min(1, "E-mail é obrigatório"),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
   confirmPassword: z.string().min(6, "A confirmação de senha deve ter pelo menos 6 caracteres"),
   role: z.enum(["mentor"]),
@@ -62,6 +63,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
     defaultValues: {
       name: "",
       username: "",
+      email: "",
       password: "",
       confirmPassword: "",
       role: "mentor",
@@ -210,6 +212,20 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                   <FormLabel>Nome de usuário</FormLabel>
                   <FormControl>
                     <Input placeholder="Seu nome de usuário" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={registerForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-mail</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="seu.email@exemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
