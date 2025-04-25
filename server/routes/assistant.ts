@@ -58,9 +58,7 @@ assistantRouter.post("/conversations", isAuthenticated, async (req, res) => {
     const conversation = await storage.createConversation({
       title,
       userId,
-      assistantType,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      assistantType
     });
     
     res.status(201).json(conversation);
@@ -227,8 +225,8 @@ assistantRouter.post("/conversations/:id/messages", isAuthenticated, async (req,
       conversationId,
       content,
       role: "user",
-      timestamp,
-      contextData: contextData ? JSON.stringify(contextData) : null
+      timestamp: new Date(),
+      contextData: contextData || null
     });
     
     // Atualizar timestamp da conversa
@@ -247,8 +245,8 @@ assistantRouter.post("/conversations/:id/messages", isAuthenticated, async (req,
       conversationId,
       content: assistantResponse,
       role: "assistant",
-      timestamp: new Date().toISOString(),
-      contextData: contextData ? JSON.stringify(contextData) : null
+      timestamp: new Date(),
+      contextData: contextData || null
     });
     
     res.json({
@@ -425,7 +423,6 @@ assistantRouter.post("/suggestions", isAuthenticated, async (req, res) => {
       contextType,
       assistantType,
       userId,
-      createdAt: new Date().toISOString(),
       expiresAt: null
     });
     
