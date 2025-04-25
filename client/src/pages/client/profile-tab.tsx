@@ -14,12 +14,12 @@ export function ClientProfileTab() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   
-  // Dados mockados para o perfil
-  const userProfile = user || {
-    name: "Ana Oliveira",
-    email: "ana.oliveira@example.com",
-    company: "Tech Solutions Inc.",
-    position: "Gerente de Produto",
+  // Sempre utilizamos dados mockados para a visualização, mas tentamos incorporar os dados reais do usuário quando disponíveis
+  const userProfile = {
+    name: user?.name || "Ana Oliveira",
+    username: user?.username || "ana.cliente",
+    company: user?.company || "Tech Solutions Inc.",
+    position: user?.position || "Gerente de Produto",
     bio: "Profissional com mais de 5 anos de experiência em gestão de produtos digitais. Especialista em metodologias ágeis e desenvolvimento de equipes.",
     profileImage: "https://randomuser.me/api/portraits/women/68.jpg"
   };
@@ -126,14 +126,14 @@ export function ClientProfileTab() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="username">Nome de Usuário</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="email" 
-                        placeholder="Seu email" 
+                        id="username" 
+                        placeholder="Seu nome de usuário" 
                         className="pl-10"
-                        defaultValue={userProfile.email}
+                        defaultValue={userProfile.username}
                         disabled
                       />
                     </div>

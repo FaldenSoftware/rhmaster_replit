@@ -69,28 +69,42 @@ export class MemStorage implements IStorage {
   }
 
   private addSampleData() {
-    // This is just for testing and would be removed in production
-    const sampleMentor = {
+    // Usuário mentor com login 'admin'
+    const adminMentor = {
       id: this.currentId++,
-      username: "mentor@example.com",
-      password: "password-hash", // In reality this would be hashed
-      name: "Carlos Mendes",
-      role: "mentor"
+      username: "admin",
+      password: "827ccb0eea8a706c4c34a16891f84e7b", // 'admin' com hash md5 (temporário)
+      name: "Marcos Silva",
+      role: "mentor" as const,
+      plan: "enterprise" as const,
+      active: true,
+      createdAt: new Date().toISOString(),
+      profile: null,
+      company: "RH Master Consultoria",
+      position: "Diretor de Desenvolvimento",
+      mentorId: null
     };
-    this.users.set(sampleMentor.id, sampleMentor as User);
+    this.users.set(adminMentor.id, adminMentor as User);
 
-    const sampleClient = {
+    // Usuário cliente com login 'cliente'
+    const adminClient = {
       id: this.currentId++,
-      username: "client@example.com",
-      password: "password-hash", // In reality this would be hashed
-      name: "Ana Beatriz",
-      role: "client",
-      mentorId: sampleMentor.id
+      username: "cliente",
+      password: "827ccb0eea8a706c4c34a16891f84e7b", // 'admin' com hash md5 (temporário)
+      name: "Ana Oliveira",
+      role: "client" as const,
+      mentorId: adminMentor.id,
+      plan: "pro" as const,
+      active: true, 
+      createdAt: new Date().toISOString(),
+      profile: null,
+      company: "Tech Solutions Inc.",
+      position: "Gerente de Produto",
     };
-    this.users.set(sampleClient.id, sampleClient as User);
+    this.users.set(adminClient.id, adminClient as User);
 
     // Set up the mentor-client relationship
-    this.mentorClients.set(sampleMentor.id, new Set([sampleClient.id]));
+    this.mentorClients.set(adminMentor.id, new Set([adminClient.id]));
   }
 }
 

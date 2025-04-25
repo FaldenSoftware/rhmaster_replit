@@ -22,6 +22,14 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  // Se for um hash MD5 (temporário para os usuários admin)
+  if (stored.length === 32 && !stored.includes('.')) {
+    const crypto = require('crypto');
+    const md5Hash = crypto.createHash('md5').update(supplied).digest('hex');
+    return md5Hash === stored;
+  }
+  
+  // Para senhas normais com salt
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
