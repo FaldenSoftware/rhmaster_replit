@@ -13,6 +13,8 @@ import { ProfileTab } from "@/pages/mentor/profile-tab";
 import { TestsTab } from "@/pages/mentor/tests-tab";
 import { AnalyticsTab } from "@/pages/mentor/analytics-tab";
 import { GamificationTab } from "@/pages/mentor/gamification-tab";
+import { InvitesTab } from "@/pages/mentor/invites-tab";
+import { SettingsTab } from "@/pages/mentor/settings-tab";
 import { ClientTestsTab } from "@/pages/client/tests-tab";
 import { ClientProfileTab } from "@/pages/client/profile-tab";
 
@@ -29,6 +31,8 @@ function Router() {
       <ProtectedRoute path="/mentor-dashboard/test-assignment" component={TestAssignmentKanban} />
       <ProtectedRoute path="/mentor-dashboard/analytics" component={AnalyticsTab} />
       <ProtectedRoute path="/mentor-dashboard/gamification" component={GamificationTab} />
+      <ProtectedRoute path="/mentor-dashboard/invites" component={InvitesTab} />
+      <ProtectedRoute path="/mentor-dashboard/settings" component={SettingsTab} />
       <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
       
       {/* Dashboard do cliente e sub-rotas */}

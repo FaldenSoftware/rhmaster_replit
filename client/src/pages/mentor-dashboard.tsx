@@ -18,6 +18,8 @@ import { TestsTab } from "./mentor/tests-tab";
 import { ProfileTab } from "./mentor/profile-tab";
 import { AnalyticsTab } from "./mentor/analytics-tab";
 import { GamificationTab } from "./mentor/gamification-tab";
+import { InvitesTab } from "./mentor/invites-tab";
+import { SettingsTab } from "./mentor/settings-tab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -56,7 +58,7 @@ export default function MentorDashboard() {
       >
         <div className="border-b">
           <div className="container mx-auto">
-            <TabsList className="flex h-10 items-center justify-start p-0 bg-transparent w-full">
+            <TabsList className="flex h-10 items-center justify-start p-0 bg-transparent w-full overflow-x-auto">
               <TabsTrigger
                 value="dashboard"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
@@ -76,6 +78,12 @@ export default function MentorDashboard() {
                 Testes
               </TabsTrigger>
               <TabsTrigger
+                value="invites"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Convites
+              </TabsTrigger>
+              <TabsTrigger
                 value="analytics"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
               >
@@ -92,6 +100,12 @@ export default function MentorDashboard() {
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
               >
                 Meu Perfil
+              </TabsTrigger>
+              <TabsTrigger
+                value="settings"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Configurações
               </TabsTrigger>
             </TabsList>
           </div>
@@ -213,6 +227,14 @@ export default function MentorDashboard() {
 
         <TabsContent value="profile">
           <ProfileTab />
+        </TabsContent>
+
+        <TabsContent value="invites">
+          <InvitesTab />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <SettingsTab />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
