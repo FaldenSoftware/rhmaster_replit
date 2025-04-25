@@ -27,7 +27,7 @@ export interface IStorage {
   // Mensagens
   addMessage(message: InsertMessage): Promise<Message>;
   getConversationMessages(conversationId: number): Promise<Message[]>;
-  updateMessageFeedback(id: number, feedback: string): Promise<Message | undefined>;
+  updateMessageFeedback(id: number, feedback: "positive" | "negative" | "neutral" | null): Promise<Message | undefined>;
   
   // Sugestões
   createSuggestion(suggestion: InsertSuggestion): Promise<Suggestion>;
@@ -155,6 +155,7 @@ export class MemStorage implements IStorage {
       ...insertMessage,
       id,
       timestamp: insertMessage.timestamp || now,
+      contextData: insertMessage.contextData || null,
       feedback: null
     };
     
@@ -179,7 +180,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
   
-  async updateMessageFeedback(id: number, feedback: string): Promise<Message | undefined> {
+  async updateMessageFeedback(id: number, feedback: "positive" | "negative" | "neutral" | null): Promise<Message | undefined> {
     const message = this.messages.get(id);
     if (!message) return undefined;
     
@@ -201,7 +202,8 @@ export class MemStorage implements IStorage {
       ...insertSuggestion,
       id,
       createdAt: insertSuggestion.createdAt || now,
-      isRead: false
+      isRead: false,
+      expiresAt: insertSuggestion.expiresAt || null
     };
     
     this.suggestions.set(id, suggestion);
