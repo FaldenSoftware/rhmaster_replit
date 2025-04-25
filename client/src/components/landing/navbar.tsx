@@ -1,143 +1,177 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { Menu } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { AuthForm } from "@/components/auth/auth-form";
+import { useTheme } from "@/hooks/use-theme";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Menu, X, Sun, Moon } from "lucide-react";
 
 export function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [location] = useLocation();
-  const { user, isMentor } = useAuth();
-  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
 
-  const getDashboardPath = () => {
-    if (!user) return "/auth";
-    return isMentor ? "/mentor-dashboard" : "/client-dashboard";
-  };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Disable body scroll when menu is open on mobile
+  useEffect(() => {
+    if (menuOpen && isMobile) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [menuOpen, isMobile]);
 
   return (
-    <header className="bg-white shadow sticky top-0 z-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-200 ${
+        scrolled
+          ? "bg-white shadow-md py-3"
+          : "bg-transparent py-4"
+      }`}
+    >
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <svg className="h-10 w-10 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"/>
-              <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className="ml-2 text-xl font-semibold text-primary">RH Master</span>
+          <Link href="/">
+            <a className="flex items-center space-x-2">
+              <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
+                <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"/>
+                  <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span className="font-bold text-xl text-slate-900">RH Master</span>
+            </a>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link href="/#recursos" className="text-slate-600 hover:text-primary text-sm font-medium">Recursos</Link>
-            <Link href="/#como-funciona" className="text-slate-600 hover:text-primary text-sm font-medium">Como Funciona</Link>
-            <Link href="/#planos" className="text-slate-600 hover:text-primary text-sm font-medium">Planos</Link>
-            <Link href="/#contato" className="text-slate-600 hover:text-primary text-sm font-medium">Contato</Link>
+            <Link href="#features">
+              <a className="font-medium text-slate-700 hover:text-primary transition-colors">
+                Recursos
+              </a>
+            </Link>
+            <Link href="#how-it-works">
+              <a className="font-medium text-slate-700 hover:text-primary transition-colors">
+                Como Funciona
+              </a>
+            </Link>
+            <Link href="#pricing">
+              <a className="font-medium text-slate-700 hover:text-primary transition-colors">
+                Planos
+              </a>
+            </Link>
+            <Link href="#testimonials">
+              <a className="font-medium text-slate-700 hover:text-primary transition-colors">
+                Depoimentos
+              </a>
+            </Link>
+            <Link href="#faq">
+              <a className="font-medium text-slate-700 hover:text-primary transition-colors">
+                FAQ
+              </a>
+            </Link>
           </nav>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            {user ? (
-              <Link href={getDashboardPath()}>
-                <Button variant="default">
-                  Acessar Dashboard
-                </Button>
+          {/* Right Side Actions */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+            
+            <div className="hidden md:flex items-center space-x-2">
+              <Link href="/auth">
+                <a>
+                  <Button variant="outline">Entrar</Button>
+                </a>
               </Link>
-            ) : (
-              <>
-                <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="link" className="text-primary">Entrar</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Entrar ou Criar Conta</DialogTitle>
-                      <DialogDescription>
-                        Acesse sua conta para continuar ou crie uma nova conta.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <AuthForm onSuccess={() => setIsLoginDialogOpen(false)} />
-                  </DialogContent>
-                </Dialog>
-                
-                <Link href="/auth">
-                  <Button variant="default">
-                    Começar Agora
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden rounded-md p-2 text-slate-600 hover:bg-slate-100 focus:outline-none"
-            onClick={toggleMobileMenu}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden pb-4">
-            <div className="flex flex-col space-y-3">
-              <Link href="/#recursos" className="text-slate-600 hover:text-primary px-3 py-2 rounded-md text-base font-medium">Recursos</Link>
-              <Link href="/#como-funciona" className="text-slate-600 hover:text-primary px-3 py-2 rounded-md text-base font-medium">Como Funciona</Link>
-              <Link href="/#planos" className="text-slate-600 hover:text-primary px-3 py-2 rounded-md text-base font-medium">Planos</Link>
-              <Link href="/#contato" className="text-slate-600 hover:text-primary px-3 py-2 rounded-md text-base font-medium">Contato</Link>
-              
-              <div className="pt-2 space-y-2">
-                {user ? (
-                  <Link href={getDashboardPath()}>
-                    <Button variant="default" className="w-full">
-                      Acessar Dashboard
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">Entrar</Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Entrar ou Criar Conta</DialogTitle>
-                          <DialogDescription>
-                            Acesse sua conta para continuar ou crie uma nova conta.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <AuthForm />
-                      </DialogContent>
-                    </Dialog>
-                    
-                    <Link href="/auth">
-                      <Button variant="default" className="w-full">
-                        Começar Agora
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
+              <Link href="/auth?tab=register">
+                <a>
+                  <Button>Cadastre-se</Button>
+                </a>
+              </Link>
             </div>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              className="p-2 md:hidden rounded-md hover:bg-slate-100 transition-colors"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+            >
+              {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="fixed inset-0 top-[65px] z-50 bg-white md:hidden">
+          <nav className="container mx-auto px-4 py-6 space-y-6 divide-y divide-slate-100">
+            <div className="space-y-4 py-4">
+              <Link href="#features">
+                <a className="block font-medium text-lg text-slate-900 hover:text-primary transition-colors py-2" onClick={() => setMenuOpen(false)}>
+                  Recursos
+                </a>
+              </Link>
+              <Link href="#how-it-works">
+                <a className="block font-medium text-lg text-slate-900 hover:text-primary transition-colors py-2" onClick={() => setMenuOpen(false)}>
+                  Como Funciona
+                </a>
+              </Link>
+              <Link href="#pricing">
+                <a className="block font-medium text-lg text-slate-900 hover:text-primary transition-colors py-2" onClick={() => setMenuOpen(false)}>
+                  Planos
+                </a>
+              </Link>
+              <Link href="#testimonials">
+                <a className="block font-medium text-lg text-slate-900 hover:text-primary transition-colors py-2" onClick={() => setMenuOpen(false)}>
+                  Depoimentos
+                </a>
+              </Link>
+              <Link href="#faq">
+                <a className="block font-medium text-lg text-slate-900 hover:text-primary transition-colors py-2" onClick={() => setMenuOpen(false)}>
+                  FAQ
+                </a>
+              </Link>
+            </div>
+            
+            <div className="space-y-4 py-4">
+              <Link href="/auth">
+                <a className="block w-full" onClick={() => setMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">Entrar</Button>
+                </a>
+              </Link>
+              <Link href="/auth?tab=register">
+                <a className="block w-full" onClick={() => setMenuOpen(false)}>
+                  <Button className="w-full">Cadastre-se</Button>
+                </a>
+              </Link>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

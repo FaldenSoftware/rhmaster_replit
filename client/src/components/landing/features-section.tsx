@@ -1,62 +1,90 @@
 import { 
-  ClipboardList, 
+  BarChart, 
+  Brain, 
   Users, 
-  BarChart2, 
   Award, 
-  CalendarDays, 
-  Lightbulb 
+  BookOpen, 
+  MessagesSquare,
+  Shield,
+  LineChart,
+  Sparkles 
 } from "lucide-react";
 
-const features = [
-  {
-    icon: ClipboardList,
-    title: "Testes Comportamentais",
-    description: "Avalie o perfil de liderança dos seus clientes com testes validados e receba análises detalhadas."
-  },
-  {
-    icon: Users,
-    title: "Gestão de Clientes",
-    description: "Sistema exclusivo de convites para adicionar e organizar seus clientes com facilidade e segurança."
-  },
-  {
-    icon: BarChart2,
-    title: "Dashboard Analítico",
-    description: "Visualize o progresso de seus clientes com gráficos e métricas em um dashboard personalizado."
-  },
-  {
-    icon: Award,
-    title: "Gamificação",
-    description: "Aumente o engajamento com elementos de gamificação e rankings exclusivos para mentores."
-  },
-  {
-    icon: CalendarDays,
-    title: "Interface Kanban",
-    description: "Atribua testes e acompanhe o status de cada cliente com um sistema visual intuitivo."
-  },
-  {
-    icon: Lightbulb,
-    title: "Assistentes Virtuais de IA",
-    description: "Conte com a ajuda de assistentes de IA para obter insights e otimizar seu trabalho."
-  }
-];
-
 export function FeaturesSection() {
+  const features = [
+    {
+      icon: Brain,
+      title: "Testes Comportamentais",
+      description: "Aplique testes cientificamente validados para entender o perfil de seus líderes e identificar áreas de melhoria."
+    },
+    {
+      icon: BarChart,
+      title: "Análise de Desempenho",
+      description: "Acompanhe o progresso de seus clientes com métricas detalhadas e visualizações intuitivas."
+    },
+    {
+      icon: Users,
+      title: "Gerenciamento de Clientes",
+      description: "Organize seus clientes, acompanhe seu progresso e envie convites personalizados."
+    },
+    {
+      icon: Award,
+      title: "Gamificação Motivacional",
+      description: "Mantenha seus clientes engajados com conquistas, desafios e recompensas personalizadas."
+    },
+    {
+      icon: BookOpen,
+      title: "Biblioteca de Recursos",
+      description: "Acesse uma ampla coleção de materiais, exercícios e atividades para seus clientes."
+    },
+    {
+      icon: MessagesSquare,
+      title: "Comunicação Integrada",
+      description: "Mantenha contato constante com seus clientes através de nossa plataforma segura."
+    },
+    {
+      icon: LineChart,
+      title: "Relatórios Personalizados",
+      description: "Gere relatórios detalhados e personalizados para cada cliente, facilitando a visualização de progresso."
+    },
+    {
+      icon: Shield,
+      title: "Segurança de Dados",
+      description: "Todas as informações dos seus clientes são armazenadas com criptografia e seguindo as melhores práticas de segurança."
+    },
+    {
+      icon: Sparkles,
+      title: "IA Assistiva",
+      description: "Utilize nossos assistentes de IA para gerar insights e recomendações personalizadas para cada cliente."
+    }
+  ];
+
   return (
-    <section id="recursos" className="py-20 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="features" className="py-20 bg-white">
+      <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Recursos Poderosos para Mentores</h2>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">Tudo o que você precisa para transformar seus clientes em líderes excepcionais, em uma única plataforma.</p>
+          <p className="text-sm font-medium text-primary mb-2 tracking-wider uppercase">RECURSOS</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            Ferramentas poderosas para mentores excepcionais
+          </h2>
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+            Acompanhe o desenvolvimento de seus clientes, obtenha insights valiosos
+            e transforme sua mentoria em resultados tangíveis.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <div key={index} className="bg-slate-50 rounded-xl p-6 shadow-md border border-slate-100 hover:shadow-lg transition-shadow">
+            <div key={index} className="bg-slate-50 rounded-lg p-6 border border-slate-100 transition-all duration-200 hover:shadow-md hover:border-primary/20">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                 <feature.icon className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">{feature.title}</h3>
-              <p className="text-slate-600">{feature.description}</p>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-slate-600">
+                {feature.description}
+              </p>
             </div>
           ))}
         </div>
