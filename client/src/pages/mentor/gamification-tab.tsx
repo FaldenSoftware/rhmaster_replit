@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -341,9 +341,9 @@ export function GamificationTabContent() {
                       <div className={`p-3 rounded-full ${
                         badge.unlocked > 0 ? "bg-primary/10" : "bg-slate-100"
                       }`}>
-                        {React.createElement(badge.icon, {
-                          className: `h-6 w-6 ${badge.unlocked > 0 ? "text-primary" : "text-slate-400"}`
-                        })}
+                        <badge.icon 
+                          className={`h-6 w-6 ${badge.unlocked > 0 ? "text-primary" : "text-slate-400"}`}
+                        />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
