@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { assistantRouter } from "./routes/assistant";
+import { subscriptionRouter } from "./routes/subscription";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up authentication routes
@@ -10,6 +11,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Registrar as rotas do assistente virtual
   app.use("/api/assistant", assistantRouter);
+  
+  // Registrar as rotas de assinatura e pagamento
+  app.use("/api/subscription", subscriptionRouter);
 
   // API routes
   app.get("/api/mentors", async (req, res) => {
