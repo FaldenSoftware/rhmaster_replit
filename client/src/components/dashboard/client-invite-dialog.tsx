@@ -1,11 +1,7 @@
 import { useState } from "react";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,61 +9,63 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const inviteSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
+  message: z.string().optional(),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
-export function ClientInviteDialog() {
-  const [open, setOpen] = useState(false);
-  const { user } = useAuth();
-  const { toast } = useToast();
+interface ClientInviteDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
       name: "",
       email: "",
+      message: "",
     },
   });
 
-  if (!user || user.role !== "mentor") return null;
-
   const onSubmit = async (values: InviteFormValues) => {
-    if (!user) return;
-    
     setIsSubmitting(true);
     
     try {
-      await apiRequest("POST", "/api/invite", {
-        ...values,
-        mentorId: user.id,
-      });
+      // Enviar convite para o backend
+      await apiRequest("POST", "/api/invite", values);
       
       toast({
         title: "Convite enviado",
         description: `Um convite foi enviado para ${values.name} (${values.email})`,
       });
       
+      // Resetar formulário e fechar diálogo
       form.reset();
-      setOpen(false);
+      onOpenChange(false);
     } catch (error) {
       toast({
         title: "Erro ao enviar convite",
@@ -80,40 +78,31 @@ export function ClientInviteDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Mail className="mr-2 h-4 w-4" />
-          Convidar Cliente
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Convidar novo cliente</DialogTitle>
+          <DialogTitle>Convidar Cliente</DialogTitle>
           <DialogDescription>
-            Envie um convite por e-mail para que seu cliente possa se cadastrar na plataforma.
+            Envie um convite para seu cliente se juntar à plataforma RH Master.
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                  <FormLabel>Nome do Cliente</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome do cliente" {...field} />
+                    <Input placeholder="Nome completo" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Nome completo do seu cliente.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="email"
@@ -121,17 +110,35 @@ export function ClientInviteDialog() {
                 <FormItem>
                   <FormLabel>E-mail</FormLabel>
                   <FormControl>
-                    <Input placeholder="cliente@exemplo.com" type="email" {...field} />
+                    <Input placeholder="email@exemplo.com" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Um e-mail de convite será enviado para este endereço.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mensagem Personalizada (opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Digite uma mensagem personalizada para o seu convite..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
@@ -139,7 +146,10 @@ export function ClientInviteDialog() {
                     Enviando...
                   </>
                 ) : (
-                  "Enviar convite"
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Enviar Convite
+                  </>
                 )}
               </Button>
             </DialogFooter>
