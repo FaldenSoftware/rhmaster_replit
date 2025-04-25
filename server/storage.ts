@@ -514,7 +514,17 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Por padrão, usamos o MemStorage para desenvolvimento e testes
-// Para trocar para o banco de dados, descomente a linha abaixo
-export const storage = new MemStorage();
-// export const storage = new DatabaseStorage();
+// Verificamos se existe a variável de ambiente DATABASE_URL
+// Se existir, usamos o DatabaseStorage, caso contrário, usamos o MemStorage
+// Isso permite que a aplicação funcione mesmo sem banco de dados configurado
+let selectedStorage: IStorage;
+
+if (process.env.DATABASE_URL) {
+  console.log("Usando armazenamento com banco de dados PostgreSQL");
+  selectedStorage = new DatabaseStorage();
+} else {
+  console.log("Usando armazenamento em memória");
+  selectedStorage = new MemStorage();
+}
+
+export const storage = selectedStorage;
