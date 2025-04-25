@@ -101,6 +101,34 @@ assistantRouter.get("/conversations/:id", isAuthenticated, async (req, res) => {
   }
 });
 
+// Obter apenas as mensagens de uma conversa
+assistantRouter.get("/conversations/:id/messages", isAuthenticated, async (req, res) => {
+  try {
+    const conversationId = parseInt(req.params.id);
+    const userId = req.user!.id;
+    
+    // Buscar conversa para verificar permissão
+    const conversation = await storage.getConversation(conversationId);
+    
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversa não encontrada" });
+    }
+    
+    // Verificar permissão (apenas proprietário pode ver)
+    if (conversation.userId !== userId) {
+      return res.status(403).json({ message: "Sem permissão para acessar esta conversa" });
+    }
+    
+    // Buscar mensagens
+    const messages = await storage.getConversationMessages(conversationId);
+    
+    res.json(messages);
+  } catch (error) {
+    console.error("Erro ao buscar mensagens:", error);
+    res.status(500).json({ message: "Erro ao buscar mensagens" });
+  }
+});
+
 // Atualizar título da conversa
 assistantRouter.patch("/conversations/:id", isAuthenticated, async (req, res) => {
   try {

@@ -126,17 +126,35 @@ export function FloatingChat({
   // Carrega mensagens de uma conversa
   const loadMessages = async (conversationId: number) => {
     try {
+      // Primeiro carregar a conversa
       const response = await apiRequest("GET", `/api/assistant/conversations/${conversationId}`);
       if (!response.ok) throw new Error("Erro ao carregar conversa");
       
-      const conversation = await response.json();
-      setConversation(conversation);
+      const conversationData = await response.json();
+      setConversation({
+        id: conversationData.id,
+        title: conversationData.title,
+        updatedAt: conversationData.updatedAt
+      });
       
+      // Se a conversa já tem mensagens na resposta, usá-las
+      if (conversationData.messages && Array.isArray(conversationData.messages)) {
+        setMessages(conversationData.messages);
+        return;
+      }
+      
+      // Caso contrário, fazer uma solicitação separada para obter as mensagens
       const messagesResponse = await apiRequest("GET", `/api/assistant/conversations/${conversationId}/messages`);
       if (!messagesResponse.ok) throw new Error("Erro ao carregar mensagens");
       
       const messagesData = await messagesResponse.json();
-      setMessages(messagesData);
+      if (Array.isArray(messagesData)) {
+        setMessages(messagesData);
+      } else {
+        // Tratar caso em que a resposta não é um array
+        console.warn("Resposta de mensagens não é um array:", messagesData);
+        setMessages([]);
+      }
     } catch (error) {
       console.error("Erro ao carregar mensagens:", error);
       toast({
