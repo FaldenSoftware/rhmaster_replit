@@ -15,6 +15,8 @@ import { Progress } from "@/components/ui/progress";
 import { TestCard } from "@/components/dashboard/test-card";
 import { ClientTestsTab } from "./client/tests-tab";
 import { ClientProfileTab } from "./client/profile-tab";
+import { ResultsTab } from "./client/results-tab";
+import { AchievementsTab } from "./client/achievements-tab";
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -237,6 +239,14 @@ export default function ClientDashboard() {
 
         <TabsContent value="tests">
           <ClientTestsTab />
+        </TabsContent>
+
+        <TabsContent value="results">
+          <ResultsTab />
+        </TabsContent>
+
+        <TabsContent value="achievements">
+          <AchievementsTab />
         </TabsContent>
 
         <TabsContent value="profile">
