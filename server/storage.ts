@@ -29,6 +29,9 @@ export class MemStorage implements IStorage {
     
     // Add some sample data
     this.addSampleData();
+    
+    // Debug: Print all users
+    console.log('Usuários disponíveis:', Array.from(this.users.entries()));
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -36,14 +39,33 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
+    console.log(`Procurando usuário com username: "${username}"`);
+    console.log('Usuários disponíveis:', Array.from(this.users.values()).map(u => u.username));
+    
+    const user = Array.from(this.users.values()).find(
       (user) => user.username === username,
     );
+    
+    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
-    const user: User = { ...insertUser, id };
+    
+    // Adicionar campos obrigatórios que podem estar faltando
+    const user: User = { 
+      ...insertUser, 
+      id,
+      mentorId: insertUser.mentorId ?? null,
+      plan: insertUser.plan ?? null,
+      active: true,
+      createdAt: new Date().toISOString(),
+      profile: null,
+      company: insertUser.company ?? null,
+      position: insertUser.position ?? null
+    };
+    
     this.users.set(id, user);
     
     // If this is a client and has a mentorId, add to the mentor's clients
@@ -54,6 +76,7 @@ export class MemStorage implements IStorage {
       this.mentorClients.get(user.mentorId)?.add(id);
     }
     
+    console.log('Novo usuário criado:', user);
     return user;
   }
 

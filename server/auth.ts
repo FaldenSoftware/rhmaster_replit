@@ -22,10 +22,13 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  console.log(`Comparando senha: "${supplied}" com hash armazenado`);
+  
   // Se for um hash MD5 (temporário para os usuários admin)
   if (stored.length === 32 && !stored.includes('.')) {
     const crypto = require('crypto');
     const md5Hash = crypto.createHash('md5').update(supplied).digest('hex');
+    console.log(`Usando comparação MD5: ${md5Hash} === ${stored}`);
     return md5Hash === stored;
   }
   
