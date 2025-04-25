@@ -16,6 +16,8 @@ import {
 import { ClientsTab } from "./mentor/clients-tab";
 import { TestsTab } from "./mentor/tests-tab";
 import { ProfileTab } from "./mentor/profile-tab";
+import { AnalyticsTab } from "./mentor/analytics-tab";
+import { GamificationTab } from "./mentor/gamification-tab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -72,6 +74,18 @@ export default function MentorDashboard() {
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
               >
                 Testes
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger
+                value="gamification"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Gamificação
               </TabsTrigger>
               <TabsTrigger
                 value="profile"
@@ -187,6 +201,14 @@ export default function MentorDashboard() {
 
         <TabsContent value="tests">
           <TestsTab />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <AnalyticsTab />
+        </TabsContent>
+
+        <TabsContent value="gamification">
+          <GamificationTab />
         </TabsContent>
 
         <TabsContent value="profile">

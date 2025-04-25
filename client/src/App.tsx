@@ -11,6 +11,8 @@ import TestAssignmentKanban from "@/pages/mentor/test-assignment-kanban";
 import { ClientsTab } from "@/pages/mentor/clients-tab";
 import { ProfileTab } from "@/pages/mentor/profile-tab";
 import { TestsTab } from "@/pages/mentor/tests-tab";
+import { AnalyticsTab } from "@/pages/mentor/analytics-tab";
+import { GamificationTab } from "@/pages/mentor/gamification-tab";
 
 function Router() {
   return (
@@ -23,6 +25,8 @@ function Router() {
       <ProtectedRoute path="/mentor-dashboard/clients" component={ClientsTab} />
       <ProtectedRoute path="/mentor-dashboard/tests" component={TestsTab} />
       <ProtectedRoute path="/mentor-dashboard/test-assignment" component={TestAssignmentKanban} />
+      <ProtectedRoute path="/mentor-dashboard/analytics" component={AnalyticsTab} />
+      <ProtectedRoute path="/mentor-dashboard/gamification" component={GamificationTab} />
       <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
       
       {/* Dashboard do cliente */}
