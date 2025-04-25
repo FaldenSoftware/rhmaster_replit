@@ -1,8 +1,17 @@
 import { ClipboardList, Eye } from "lucide-react";
 import { TestCard } from "@/components/dashboard/test-card";
 import { Button } from "@/components/ui/button";
+import { DashboardLayout } from "@/layouts/dashboard-layout";
 
 export function ClientTestsTab() {
+  return (
+    <DashboardLayout>
+      <ClientTestsContent />
+    </DashboardLayout>
+  );
+}
+
+function ClientTestsContent() {
   // Dados mockados para exemplo
   const assignedTests = [
     {

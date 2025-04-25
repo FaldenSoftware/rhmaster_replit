@@ -3,8 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardLayout } from "@/layouts/dashboard-layout";
 
 export function ResultsTab() {
+  return (
+    <DashboardLayout>
+      <ResultsContent />
+    </DashboardLayout>
+  );
+}
+
+function ResultsContent() {
   // Dados mockados para exemplo
   const testResults = [
     {
