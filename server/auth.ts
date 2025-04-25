@@ -96,6 +96,25 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      // Verificar se campos obrigatórios estão presentes
+      if (!req.body.username) {
+        return res.status(400).json({ message: "O nome de usuário é obrigatório" });
+      }
+      
+      if (!req.body.password) {
+        return res.status(400).json({ message: "A senha é obrigatória" });
+      }
+      
+      if (!req.body.email) {
+        return res.status(400).json({ message: "O e-mail é obrigatório" });
+      }
+      
+      // Verificar formato básico de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(req.body.email)) {
+        return res.status(400).json({ message: "Formato de e-mail inválido" });
+      }
+
       // Verificar se o nome de usuário já existe
       const existingUsername = await storage.getUserByUsername(req.body.username);
       if (existingUsername) {
@@ -103,11 +122,9 @@ export function setupAuth(app: Express) {
       }
       
       // Verificar se o email já existe
-      if (req.body.email) {
-        const existingEmail = await storage.getUserByEmail(req.body.email);
-        if (existingEmail) {
-          return res.status(400).json({ message: "Este e-mail já está em uso" });
-        }
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Este e-mail já está em uso" });
       }
 
       const user = await storage.createUser({
