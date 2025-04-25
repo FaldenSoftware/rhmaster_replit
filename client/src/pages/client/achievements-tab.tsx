@@ -298,7 +298,7 @@ export function AchievementsTabContent() {
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="locked" className="flex items-center gap-2">
-            <LockKeyhole className="h-4 w-4" />
+            <Shield className="h-4 w-4" />
             <span>Bloqueadas</span>
             <Badge className="ml-1 bg-primary/90 text-primary-foreground hover:bg-primary/90">
               {filteredLocked.length}

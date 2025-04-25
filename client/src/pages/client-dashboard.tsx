@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,10 +17,27 @@ import { ClientTestsTab } from "./client/tests-tab";
 import { ClientProfileTab } from "./client/profile-tab";
 import { ResultsTab } from "./client/results-tab";
 import { AchievementsTab } from "./client/achievements-tab";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [location, setLocation] = useLocation();
+  const { user, isLoading } = useAuth();
+  
+  // Inicializar dados do usuário para demonstração caso não esteja autenticado
+  useEffect(() => {
+    if (!user && !isLoading) {
+      // Simular um usuário autenticado na memória do context (não afeta o backend)
+      (window as any).mockUser = {
+        id: 1,
+        username: "ana.cliente",
+        name: "Ana Oliveira",
+        email: "ana.oliveira@example.com",
+        role: "client",
+        createdAt: new Date().toISOString()
+      };
+    }
+  }, [user, isLoading]);
 
   // Quando o tab mudar, navegue para a rota apropriada
   const handleTabChange = (tab: string) => {

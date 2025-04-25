@@ -21,13 +21,14 @@ export function ProtectedRoute({
     );
   }
 
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
+  // Temporariamente desabilitado para fins de demonstração
+  // if (!user) {
+  //   return (
+  //     <Route path={path}>
+  //       <Redirect to="/auth" />
+  //     </Route>
+  //   );
+  // }
 
   return <Route path={path} component={Component} />;
 }

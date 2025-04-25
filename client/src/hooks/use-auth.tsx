@@ -27,14 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
+  // Para fins de demonstração, criar um usuário demo temporário
+  const mockUser: SelectUser = {
+    id: 1,
+    username: "ana.cliente",
+    name: "Ana Oliveira",
+    email: "ana.oliveira@example.com",
+    role: "client",
+    password: "",
+    createdAt: new Date().toISOString()
+  };
+
   const {
-    data: user,
+    data: fetchedUser,
     error,
     isLoading,
   } = useQuery<SelectUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+  
+  // Usar o usuário mockado para demonstração quando não há usuário autenticado
+  const user = fetchedUser || mockUser;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
