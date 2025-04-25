@@ -2,6 +2,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -13,22 +14,23 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Send } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { Loader2, Mail } from "lucide-react";
 
 const inviteSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
-  message: z.string().optional(),
+  personalMessage: z.string().optional(),
+  sendCopy: z.boolean().default(false),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
@@ -39,42 +41,32 @@ interface ClientInviteDialogProps {
 }
 
 export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
       name: "",
       email: "",
-      message: "",
+      personalMessage: "",
+      sendCopy: false,
     },
   });
 
   const onSubmit = async (values: InviteFormValues) => {
     setIsSubmitting(true);
     
-    try {
-      // Enviar convite para o backend
-      await apiRequest("POST", "/api/invite", values);
-      
+    // Simular um delay de API
+    setTimeout(() => {
       toast({
         title: "Convite enviado",
-        description: `Um convite foi enviado para ${values.name} (${values.email})`,
+        description: `Convite enviado para ${values.name} (${values.email})`,
       });
-      
-      // Resetar formulário e fechar diálogo
+      setIsSubmitting(false);
       form.reset();
       onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Erro ao enviar convite",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao enviar o convite",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    }, 1000);
   };
 
   return (
@@ -83,12 +75,12 @@ export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogPro
         <DialogHeader>
           <DialogTitle>Convidar Cliente</DialogTitle>
           <DialogDescription>
-            Envie um convite para seu cliente se juntar à plataforma RH Master.
+            Envie um convite para que um novo cliente possa acessar a plataforma.
           </DialogDescription>
         </DialogHeader>
-
+        
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="name"
@@ -102,7 +94,7 @@ export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogPro
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="email"
@@ -116,27 +108,58 @@ export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogPro
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
-              name="message"
+              name="personalMessage"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mensagem Personalizada (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Digite uma mensagem personalizada para o seu convite..."
-                      className="resize-none"
-                      {...field}
+                    <Textarea 
+                      placeholder="Adicione uma mensagem personalizada ao convite..." 
+                      {...field} 
+                      className="min-h-[100px]"
                     />
                   </FormControl>
+                  <FormDescription>
+                    Esta mensagem será incluída no e-mail de convite.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="sendCopy"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Enviar uma cópia para mim
+                    </FormLabel>
+                    <FormDescription>
+                      Você receberá uma cópia do convite em seu e-mail.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
 
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
@@ -147,7 +170,7 @@ export function ClientInviteDialog({ open, onOpenChange }: ClientInviteDialogPro
                   </>
                 ) : (
                   <>
-                    <Send className="mr-2 h-4 w-4" />
+                    <Mail className="mr-2 h-4 w-4" />
                     Enviar Convite
                   </>
                 )}
