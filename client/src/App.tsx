@@ -17,6 +17,8 @@ import { InvitesTab } from "@/pages/mentor/invites-tab";
 import { SettingsTab } from "@/pages/mentor/settings-tab";
 import { ClientTestsTab } from "@/pages/client/tests-tab";
 import { ClientProfileTab } from "@/pages/client/profile-tab";
+import { ResultsTab } from "@/pages/client/results-tab";
+import { AchievementsTab } from "@/pages/client/achievements-tab";
 
 function Router() {
   return (
@@ -38,6 +40,8 @@ function Router() {
       {/* Dashboard do cliente e sub-rotas */}
       <ProtectedRoute path="/client-dashboard" component={ClientDashboard} />
       <ProtectedRoute path="/client-dashboard/tests" component={ClientTestsTab} />
+      <ProtectedRoute path="/client-dashboard/results" component={ResultsTab} />
+      <ProtectedRoute path="/client-dashboard/achievements" component={AchievementsTab} />
       <ProtectedRoute path="/client-dashboard/profile" component={ClientProfileTab} />
       
       <Route component={NotFound} />

@@ -86,7 +86,7 @@ export default function ClientDashboard() {
       >
         <div className="border-b">
           <div className="container mx-auto">
-            <TabsList className="flex h-10 items-center justify-start p-0 bg-transparent w-full">
+            <TabsList className="flex h-10 items-center justify-start p-0 bg-transparent w-full overflow-x-auto">
               <TabsTrigger
                 value="dashboard"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
@@ -98,6 +98,18 @@ export default function ClientDashboard() {
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
               >
                 Meus Testes
+              </TabsTrigger>
+              <TabsTrigger
+                value="results"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Resultados
+              </TabsTrigger>
+              <TabsTrigger
+                value="achievements"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                Conquistas
               </TabsTrigger>
               <TabsTrigger
                 value="profile"
