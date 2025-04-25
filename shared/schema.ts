@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   role: userRoleEnum("role").notNull().default('client'),
+  stripeCustomerId: text("stripe_customer_id").unique(),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -669,6 +670,10 @@ export const subscriptions = pgTable("subscriptions", {
   lastBillingDate: timestamp("last_billing_date"),
   nextBillingDate: timestamp("next_billing_date"),
   cancellationReason: text("cancellation_reason"),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  stripePriceId: text("stripe_price_id"),
+  stripeCurrentPeriodEnd: timestamp("stripe_current_period_end"),
+  stripeCancelAtPeriodEnd: boolean("stripe_cancel_at_period_end").default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => {
