@@ -97,11 +97,8 @@ export const stripeService = {
     });
 
     // Registra a assinatura no banco de dados
-    await storage.updateUserSubscription(user.id, {
-      stripeSubscriptionId: subscription.id,
-      plan: planId,
-      status: 'incomplete',
-      maxClients: PLANS[planId].maxClients
+    await storage.updateUserStripeInfo(user.id, {
+      stripeSubscriptionId: subscription.id
     });
 
     // @ts-ignore - O TS não reconhece o expand de latest_invoice.payment_intent
@@ -156,10 +153,8 @@ export const stripeService = {
       );
 
       // Atualiza o plano do usuário no banco de dados
-      await storage.updateUserSubscription(user.id, {
-        plan: planId,
-        maxClients: PLANS[planId].maxClients,
-        // Mantém o mesmo status
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: updatedSubscription.id 
       });
 
       // @ts-ignore - Ignorando erro do TypeScript aqui
@@ -196,13 +191,11 @@ export const stripeService = {
       if (user) {
         if (cancelAtPeriodEnd) {
           // Marca como cancelamento agendado
-          await storage.updateUserSubscription(user.id, {
-            cancelAtPeriodEnd: true
-          });
+          // Não precisamos fazer nada aqui, pois não temos uma coluna para isso
         } else {
-          // Marca como inativo imediatamente
-          await storage.updateUserSubscription(user.id, {
-            status: 'canceled'
+          // Marca como inativo imediatamente - vamos apenas remover o ID da assinatura
+          await storage.updateUserStripeInfo(user.id, {
+            stripeSubscriptionId: null
           });
         }
       }

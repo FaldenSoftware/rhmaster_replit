@@ -419,6 +419,41 @@ export class DatabaseStorage implements IStorage {
     console.log('Novo usuário criado:', user);
     return user;
   }
+  
+  async updateUserStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User | undefined> {
+    console.log(`Atualizando ID de cliente Stripe para usuário ${userId}: ${stripeCustomerId}`);
+    
+    const result = await db
+      .update(users)
+      .set({ 
+        stripeCustomerId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    const user = result[0];
+    return user;
+  }
+  
+  async updateUserStripeInfo(userId: number, stripeInfo: { 
+    stripeCustomerId?: string, 
+    stripeSubscriptionId?: string 
+  }): Promise<User | undefined> {
+    console.log(`Atualizando informações do Stripe para usuário ${userId}:`, stripeInfo);
+    
+    const result = await db
+      .update(users)
+      .set({ 
+        ...stripeInfo,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    const user = result[0];
+    return user;
+  }
 
   async getAllMentors(): Promise<User[]> {
     return await db.select().from(users).where(eq(users.role, "mentor"));
