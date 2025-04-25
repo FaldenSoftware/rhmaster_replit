@@ -435,7 +435,7 @@ export default function TestAssignmentKanban() {
               </h2>
               
               <Droppable droppableId="tests" isDropDisabled={true}>
-                {(provided) => (
+                {(provided: DroppableProvided) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
@@ -443,7 +443,7 @@ export default function TestAssignmentKanban() {
                   >
                     {tests.map((test, index) => (
                       <Draggable key={test.id} draggableId={test.id} index={index}>
-                        {(provided, snapshot) => (
+                        {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -467,7 +467,7 @@ export default function TestAssignmentKanban() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredClients.map((client) => (
                 <Droppable key={client.id} droppableId={client.id}>
-                  {(provided, snapshot) => (
+                  {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
