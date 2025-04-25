@@ -4,10 +4,15 @@ import {
   messages, type Message, type InsertMessage,
   suggestions, type Suggestion, type InsertSuggestion 
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, isNull, lte, gte } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Usuários
@@ -332,4 +337,184 @@ export class MemStorage implements IStorage {
   }
 }
 
+// Implementação de armazenamento com PostgreSQL
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool,
+      createTableIfMissing: true
+    });
+  }
+
+  // Implementação de usuários
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    console.log(`Procurando usuário com username: "${username}"`);
+    
+    const result = await db.select().from(users).where(eq(users.username, username));
+    const user = result[0];
+    
+    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Adicionar campos obrigatórios que podem estar faltando
+    const userToInsert = {
+      ...insertUser,
+      role: insertUser.role || "client", // Garantir que role sempre tenha um valor
+      active: true,
+      createdAt: new Date(),
+    };
+    
+    const result = await db.insert(users).values(userToInsert).returning();
+    const user = result[0];
+    
+    console.log('Novo usuário criado:', user);
+    return user;
+  }
+
+  async getAllMentors(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, "mentor"));
+  }
+
+  async getClientsByMentorId(mentorId: number): Promise<User[]> {
+    return await db.select().from(users).where(and(
+      eq(users.role, "client"),
+      eq(users.mentorId, mentorId)
+    ));
+  }
+
+  // Implementação de conversas
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    const result = await db.insert(conversations).values({
+      ...insertConversation,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    return result[0];
+  }
+
+  async getUserConversations(userId: number, assistantType: string): Promise<Conversation[]> {
+    return await db.select().from(conversations).where(and(
+      eq(conversations.userId, userId),
+      eq(conversations.assistantType, assistantType)
+    )).orderBy(desc(conversations.updatedAt));
+  }
+
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    const result = await db.select().from(conversations).where(eq(conversations.id, id));
+    return result[0];
+  }
+
+  async updateConversationTitle(id: number, title: string): Promise<Conversation | undefined> {
+    const result = await db.update(conversations)
+      .set({ title, updatedAt: new Date() })
+      .where(eq(conversations.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteConversation(id: number): Promise<boolean> {
+    // Primeiro, remover todas as mensagens relacionadas
+    await db.delete(messages).where(eq(messages.conversationId, id));
+    
+    // Depois, remover a conversa
+    const result = await db.delete(conversations).where(eq(conversations.id, id)).returning();
+    
+    return result.length > 0;
+  }
+
+  // Implementação de mensagens
+  async addMessage(insertMessage: InsertMessage): Promise<Message> {
+    // Criar a mensagem
+    const result = await db.insert(messages).values({
+      ...insertMessage,
+      timestamp: insertMessage.timestamp || new Date(),
+      feedback: null
+    }).returning();
+    
+    // Atualizar o timestamp da conversa
+    await db.update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, insertMessage.conversationId));
+    
+    return result[0];
+  }
+
+  async getConversationMessages(conversationId: number): Promise<Message[]> {
+    // Se passado um ID negativo (caso especial), retornar todas as mensagens
+    if (conversationId < 0) {
+      return await db.select().from(messages);
+    }
+    
+    return await db.select().from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.timestamp);
+  }
+
+  async updateMessageFeedback(id: number, feedback: "positive" | "negative" | "neutral" | null): Promise<Message | undefined> {
+    const result = await db.update(messages)
+      .set({ feedback })
+      .where(eq(messages.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Implementação de sugestões
+  async createSuggestion(insertSuggestion: InsertSuggestion): Promise<Suggestion> {
+    const result = await db.insert(suggestions).values({
+      ...insertSuggestion,
+      isRead: false,
+      createdAt: new Date()
+    }).returning();
+    
+    return result[0];
+  }
+
+  async getUserSuggestions(userId: number, assistantType: string): Promise<Suggestion[]> {
+    const now = new Date();
+    
+    return await db.select().from(suggestions).where(and(
+      eq(suggestions.userId, userId),
+      eq(suggestions.assistantType, assistantType),
+      // Verificar se a sugestão não está expirada 
+      // (ou não tem data de expiração)
+      or(
+        isNull(suggestions.expiresAt),
+        gte(suggestions.expiresAt, now)
+      )
+    )).orderBy(desc(suggestions.createdAt));
+  }
+
+  async markSuggestionAsRead(id: number): Promise<Suggestion | undefined> {
+    const result = await db.update(suggestions)
+      .set({ isRead: true })
+      .where(eq(suggestions.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteSuggestion(id: number): Promise<boolean> {
+    const result = await db.delete(suggestions)
+      .where(eq(suggestions.id, id))
+      .returning();
+    
+    return result.length > 0;
+  }
+}
+
+// Por padrão, usamos o MemStorage para desenvolvimento e testes
+// Para trocar para o banco de dados, descomente a linha abaixo
 export const storage = new MemStorage();
+// export const storage = new DatabaseStorage();
