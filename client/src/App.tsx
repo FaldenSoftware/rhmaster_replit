@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
 import SettingsPage from "@/pages/settings-page";
+import SubscriptionPage from "@/pages/subscription-page";
 import MentorDashboard from "@/pages/mentor-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import TestAssignmentKanban from "@/pages/mentor/test-assignment-kanban";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
+      <ProtectedRoute path="/subscription" component={SubscriptionPage} />
       
       {/* Dashboard do mentor e sub-rotas */}
       <ProtectedRoute path="/mentor-dashboard" component={MentorDashboard} />
@@ -41,6 +43,7 @@ function Router() {
       <ProtectedRoute path="/mentor-dashboard/settings" component={SettingsTab} />
       <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
       <ProtectedRoute path="/mentor-dashboard/assistant" component={MentorAssistantPage} />
+      <ProtectedRoute path="/mentor-dashboard/subscription" component={SubscriptionPage} />
       
       {/* Dashboard do cliente e sub-rotas */}
       <ProtectedRoute path="/client-dashboard" component={ClientDashboard} />

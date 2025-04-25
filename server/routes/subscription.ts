@@ -1,323 +1,293 @@
-import { Router } from "express";
-import { storage } from "../storage";
-import { stripeService } from "../stripe-service";
-import { z } from "zod";
+import { Router } from 'express';
+import { z } from 'zod';
+import { storage } from '../storage';
+import { stripeService } from '../stripe-service';
+import Stripe from 'stripe';
 
-export const subscriptionRouter = Router();
-
-// Middleware para verificar se o usuário está autenticado
-function isAuthenticated(req: any, res: any, next: any) {
-  if (req.isAuthenticated()) {
-    next();
-  } else {
-    res.status(401).json({ message: "Não autenticado" });
-  }
-}
-
-// Middleware para verificar se o usuário é um mentor
-function isMentor(req: any, res: any, next: any) {
-  if (req.isAuthenticated() && req.user && req.user.role === 'mentor') {
-    next();
-  } else {
-    res.status(403).json({ message: "Apenas mentores podem acessar esta funcionalidade" });
-  }
-}
-
-// Schema para validar requisições de criação de assinatura
+// Validadores
 const createSubscriptionSchema = z.object({
-  planId: z.enum(['basic', 'pro', 'enterprise'])
+  planId: z.enum(['basic', 'pro', 'enterprise']),
 });
 
-// Schema para validar requisições de atualização de assinatura
-const updateSubscriptionSchema = z.object({
-  planId: z.enum(['basic', 'pro', 'enterprise'])
-});
-
-// Schema para validar requisições de cancelamento de assinatura
 const cancelSubscriptionSchema = z.object({
   reason: z.string().optional(),
-  cancelImmediate: z.boolean().optional().default(false)
+  cancelImmediate: z.boolean().default(false),
 });
 
-// Obter a assinatura atual do usuário
-subscriptionRouter.get('/current-subscription', isAuthenticated, isMentor, async (req, res) => {
+// Criação do router de assinaturas
+export const subscriptionRouter = Router();
+
+// Obtém a assinatura atual do usuário
+subscriptionRouter.get('/current-subscription', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Não autenticado' });
+  }
+
   try {
-    const user = req.user!;
+    const user = req.user;
     
-    // Busca a assinatura do usuário no banco de dados
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
+    // Verifica se é um mentor e se tem assinatura
+    if (user.role !== 'mentor' || !user.stripeSubscriptionId) {
+      return res.status(200).json(null);
     }
     
-    // Busca a assinatura
-    const subscription = await storage.getMentorSubscription(mentor.id);
+    // Busca os dados da assinatura no Stripe
+    const subscription = await stripeService.getSubscription(user.stripeSubscriptionId);
+    
     if (!subscription) {
-      return res.status(404).json({ message: "Assinatura não encontrada" });
+      return res.status(200).json(null);
     }
     
-    // Se tiver um ID de assinatura do Stripe, busca detalhes adicionais
-    let additionalData = {};
-    if (subscription.stripeSubscriptionId) {
-      try {
-        const stripeSubscription = await stripeService.getSubscription(subscription.stripeSubscriptionId);
-        
-        // Calcula dias restantes
-        const now = new Date();
-        const endDate = subscription.stripeCurrentPeriodEnd 
-          ? new Date(subscription.stripeCurrentPeriodEnd) 
-          : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 dias
-
-        const diffTime = Math.abs(endDate.getTime() - now.getTime());
-        const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        additionalData = {
-          daysRemaining,
-          cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-          currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString()
-        };
-      } catch (error) {
-        console.error("Erro ao buscar detalhes do Stripe:", error);
-        // Não retorna erro aqui, apenas continua sem dados adicionais
-      }
-    }
+    // Busca os clientes associados a este mentor
+    const clients = await storage.getClientsByMentorId(user.id);
     
-    // Retorna os dados da assinatura com os detalhes adicionais
-    res.json({
-      id: subscription.id,
-      plan: subscription.plan,
+    // Extrai o plano da assinatura (do metadata)
+    const plan = subscription.metadata.plan as 'basic' | 'pro' | 'enterprise';
+    
+    // Calcula dias restantes e determina o status de renovação automática
+    const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    const now = new Date();
+    const daysRemaining = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Obtém o número máximo de clientes permitidos para o plano
+    const maxClients = stripeService.getMaxClientsForPlan(plan);
+    
+    // Monta o objeto de resposta
+    const subscriptionInfo = {
+      id: user.id,
+      plan,
       status: subscription.status,
-      maxClients: subscription.maxClients,
-      clientCount: subscription.clientCount || 0,
-      startDate: subscription.startDate.toISOString(),
-      endDate: subscription.endDate ? subscription.endDate.toISOString() : undefined,
-      autoRenew: subscription.autoRenew,
-      ...additionalData
-    });
+      maxClients,
+      clientCount: clients.length,
+      startDate: new Date(subscription.start_date * 1000).toISOString(),
+      autoRenew: !subscription.cancel_at_period_end,
+      daysRemaining,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      currentPeriodEnd: currentPeriodEnd.toISOString(),
+    };
+    
+    return res.status(200).json(subscriptionInfo);
   } catch (error: any) {
-    console.error("Erro ao buscar assinatura:", error);
-    res.status(500).json({ message: `Erro ao buscar assinatura: ${error.message}` });
+    console.error('Erro ao buscar assinatura:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao buscar informações da assinatura',
+      error: error.message
+    });
   }
 });
 
-// Criar nova assinatura
-subscriptionRouter.post('/create-subscription', isAuthenticated, isMentor, async (req, res) => {
+// Cria uma nova assinatura
+subscriptionRouter.post('/create-subscription', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Não autenticado' });
+  }
+  
   try {
-    const user = req.user!;
+    const result = createSubscriptionSchema.safeParse(req.body);
     
-    // Valida os dados da requisição
-    const validation = createSubscriptionSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ message: "Dados inválidos", errors: validation.error.errors });
+    if (!result.success) {
+      return res.status(400).json({ 
+        message: 'Dados inválidos',
+        errors: result.error.format() 
+      });
     }
     
-    const { planId } = validation.data;
+    const { planId } = result.data;
+    const user = req.user;
     
-    // Verifica se o usuário já tem uma assinatura ativa
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
+    // Verifica se é um mentor
+    if (user.role !== 'mentor') {
+      return res.status(403).json({ 
+        message: 'Apenas mentores podem criar assinaturas' 
+      });
     }
     
-    const existingSubscription = await storage.getMentorSubscription(mentor.id);
-    if (existingSubscription && existingSubscription.status === 'active') {
-      return res.status(400).json({ message: "Usuário já possui uma assinatura ativa" });
+    // Determina se é uma nova assinatura ou atualização
+    let subscription;
+    
+    if (user.stripeSubscriptionId) {
+      // Atualiza a assinatura existente
+      subscription = await stripeService.updateSubscription(user, planId);
+    } else {
+      // Cria uma nova assinatura
+      subscription = await stripeService.createSubscription(user, planId);
     }
     
-    // Cria a assinatura no Stripe
-    const result = await stripeService.createSubscription(user, planId);
-    
-    res.json({
-      subscriptionId: result.subscriptionId,
-      clientSecret: result.clientSecret
+    // Retorna o client secret para iniciar o pagamento
+    return res.status(200).json({
+      clientSecret: subscription.clientSecret,
+      subscriptionId: subscription.subscriptionId
     });
   } catch (error: any) {
-    console.error("Erro ao criar assinatura:", error);
-    res.status(500).json({ message: `Erro ao criar assinatura: ${error.message}` });
+    console.error('Erro ao criar assinatura:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao criar assinatura',
+      error: error.message
+    });
   }
 });
 
-// Atualizar assinatura (mudar de plano)
-subscriptionRouter.post('/update-subscription', isAuthenticated, isMentor, async (req, res) => {
-  try {
-    const user = req.user!;
-    
-    // Valida os dados da requisição
-    const validation = updateSubscriptionSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ message: "Dados inválidos", errors: validation.error.errors });
-    }
-    
-    const { planId } = validation.data;
-    
-    // Verifica se o usuário tem uma assinatura ativa
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
-    }
-    
-    const existingSubscription = await storage.getMentorSubscription(mentor.id);
-    if (!existingSubscription || existingSubscription.status !== 'active') {
-      return res.status(400).json({ message: "Usuário não possui uma assinatura ativa" });
-    }
-    
-    // Atualiza a assinatura no Stripe
-    const result = await stripeService.updateSubscription(user, planId);
-    
-    res.json({
-      subscriptionId: result.subscriptionId,
-      clientSecret: result.clientSecret,
-      success: result.success
-    });
-  } catch (error: any) {
-    console.error("Erro ao atualizar assinatura:", error);
-    res.status(500).json({ message: `Erro ao atualizar assinatura: ${error.message}` });
+// Cancela uma assinatura
+subscriptionRouter.post('/cancel-subscription', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Não autenticado' });
   }
-});
-
-// Cancelar assinatura
-subscriptionRouter.post('/cancel-subscription', isAuthenticated, isMentor, async (req, res) => {
+  
   try {
-    const user = req.user!;
+    const result = cancelSubscriptionSchema.safeParse(req.body);
     
-    // Valida os dados da requisição
-    const validation = cancelSubscriptionSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ message: "Dados inválidos", errors: validation.error.errors });
+    if (!result.success) {
+      return res.status(400).json({ 
+        message: 'Dados inválidos',
+        errors: result.error.format() 
+      });
     }
     
-    const { reason, cancelImmediate } = validation.data;
+    const { reason, cancelImmediate } = result.data;
+    const user = req.user;
     
-    // Verifica se o usuário tem uma assinatura ativa
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
+    // Verifica se o usuário tem uma assinatura
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ 
+        message: 'Nenhuma assinatura ativa encontrada' 
+      });
     }
     
-    const subscription = await storage.getMentorSubscription(mentor.id);
-    if (!subscription || !subscription.stripeSubscriptionId) {
-      return res.status(400).json({ message: "Usuário não possui uma assinatura para cancelar" });
-    }
-    
-    // Cancela a assinatura no Stripe
-    const result = await stripeService.cancelSubscription(
-      subscription.stripeSubscriptionId, 
-      !cancelImmediate
+    // Cancela a assinatura
+    const success = await stripeService.cancelSubscription(
+      user.stripeSubscriptionId,
+      !cancelImmediate  // Se não for cancelamento imediato, cancela ao final do período
     );
     
-    // Se cancelado imediatamente, também registra a razão
-    if (result && reason) {
-      await storage.updateSubscriptionCancellationReason(subscription.id, reason);
+    if (!success) {
+      return res.status(500).json({ 
+        message: 'Erro ao cancelar assinatura' 
+      });
     }
     
-    res.json({ 
-      success: result,
-      message: cancelImmediate 
-        ? "Assinatura cancelada com sucesso" 
-        : "O cancelamento foi agendado para o final do período atual" 
+    // Atualiza o registro do motivo do cancelamento, se fornecido
+    if (reason) {
+      // Podemos salvar o motivo do cancelamento se necessário
+      // await storage.saveSubscriptionCancellationReason(user.id, reason);
+    }
+    
+    return res.status(200).json({ 
+      success: true,
+      canceledImmediate: cancelImmediate 
     });
   } catch (error: any) {
-    console.error("Erro ao cancelar assinatura:", error);
-    res.status(500).json({ message: `Erro ao cancelar assinatura: ${error.message}` });
+    console.error('Erro ao cancelar assinatura:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao cancelar assinatura',
+      error: error.message
+    });
   }
 });
 
-// Reativar assinatura cancelada (apenas se ainda estiver no período ativo)
-subscriptionRouter.post('/reactivate-subscription', isAuthenticated, isMentor, async (req, res) => {
+// Reativa uma assinatura cancelada mas ainda não expirada
+subscriptionRouter.post('/reactivate-subscription', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Não autenticado' });
+  }
+  
   try {
-    const user = req.user!;
+    const user = req.user;
     
-    // Verifica se o usuário tem uma assinatura cancelada
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
+    // Verifica se o usuário tem uma assinatura
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ 
+        message: 'Nenhuma assinatura encontrada' 
+      });
     }
     
-    const subscription = await storage.getMentorSubscription(mentor.id);
-    if (!subscription || !subscription.stripeSubscriptionId) {
-      return res.status(400).json({ message: "Usuário não possui uma assinatura" });
+    // Reativa a assinatura
+    const success = await stripeService.reactivateSubscription(user.stripeSubscriptionId);
+    
+    if (!success) {
+      return res.status(500).json({ 
+        message: 'Erro ao reativar assinatura' 
+      });
     }
     
-    // Verifica se a assinatura está marcada para cancelamento no final do período
-    if (!subscription.stripeCancelAtPeriodEnd) {
-      return res.status(400).json({ message: "A assinatura não está agendada para cancelamento" });
-    }
-    
-    // Reativa a assinatura no Stripe
-    const result = await stripeService.reactivateSubscription(subscription.stripeSubscriptionId);
-    
-    res.json({ 
-      success: result,
-      message: "Assinatura reativada com sucesso"
-    });
+    return res.status(200).json({ success: true });
   } catch (error: any) {
-    console.error("Erro ao reativar assinatura:", error);
-    res.status(500).json({ message: `Erro ao reativar assinatura: ${error.message}` });
+    console.error('Erro ao reativar assinatura:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao reativar assinatura',
+      error: error.message
+    });
   }
 });
 
-// Obter histórico de faturas
-subscriptionRouter.get('/invoices', isAuthenticated, isMentor, async (req, res) => {
+// Obtém o histórico de faturas
+subscriptionRouter.get('/invoices', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Não autenticado' });
+  }
+  
   try {
-    const user = req.user!;
+    const user = req.user;
     
-    // Busca a assinatura do usuário
-    const mentor = await storage.getMentorByUserId(user.id);
-    if (!mentor) {
-      return res.status(404).json({ message: "Perfil de mentor não encontrado" });
+    // Verifica se o usuário tem uma assinatura
+    if (!user.stripeSubscriptionId) {
+      return res.status(200).json([]);
     }
     
-    const subscription = await storage.getMentorSubscription(mentor.id);
-    if (!subscription || !subscription.stripeSubscriptionId) {
-      return res.status(404).json({ message: "Nenhuma assinatura encontrada" });
-    }
+    // Busca as faturas
+    const invoices = await stripeService.listInvoices(user.stripeSubscriptionId);
     
-    // Busca as faturas do Stripe
-    const stripeInvoices = await stripeService.listInvoices(subscription.stripeSubscriptionId);
-    
-    // Formata os dados das faturas
-    const invoices = stripeInvoices.map(invoice => ({
+    // Mapeia para o formato desejado
+    const formattedInvoices = invoices.map(invoice => ({
       id: invoice.id,
-      number: invoice.number || `INV-${Math.floor(Math.random() * 10000)}`,
-      status: invoice.status,
-      amountDue: invoice.amount_due / 100, // converte de centavos para real
+      number: invoice.number,
+      created: invoice.created * 1000, // Convertendo para milissegundos
+      amountDue: invoice.amount_due / 100, // Convertendo de centavos
       amountPaid: invoice.amount_paid / 100,
-      currency: invoice.currency,
-      created: new Date(invoice.created * 1000).toISOString(),
-      dueDate: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
-      periodStart: new Date(invoice.period_start * 1000).toISOString(),
-      periodEnd: new Date(invoice.period_end * 1000).toISOString(),
-      receiptUrl: invoice.hosted_invoice_url,
-      pdf: invoice.invoice_pdf,
+      status: invoice.status,
+      periodStart: invoice.period_start * 1000,
+      periodEnd: invoice.period_end * 1000,
+      receiptUrl: invoice.hosted_invoice_url
     }));
     
-    res.json(invoices);
+    return res.status(200).json(formattedInvoices);
   } catch (error: any) {
-    console.error("Erro ao buscar faturas:", error);
-    res.status(500).json({ message: `Erro ao buscar histórico de faturas: ${error.message}` });
+    console.error('Erro ao buscar faturas:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao buscar histórico de faturas',
+      error: error.message
+    });
   }
 });
 
-// Webhook para processar eventos do Stripe
+// Webhook para eventos do Stripe
 subscriptionRouter.post('/webhook', async (req, res) => {
   const signature = req.headers['stripe-signature'] as string;
   
-  if (!signature) {
-    return res.status(400).json({ message: "Stripe signature missing" });
+  // Verifica se o payload é válido
+  if (!req.body || !signature) {
+    return res.status(400).json({ message: 'Webhook inválido' });
   }
   
   try {
-    // Processa o evento do webhook
-    const result = await stripeService.handleWebhookEvent(req.rawBody as Buffer, signature);
+    // Processa o evento
+    const { event, error } = await stripeService.handleWebhookEvent(
+      // Necessário acessar o raw body para validar a assinatura
+      (req as any).rawBody,
+      signature
+    );
     
-    if (result.received) {
-      res.status(200).json({ received: true });
-    } else {
-      console.error("Webhook error:", result.error);
-      res.status(400).json({ message: "Webhook error", error: result.error?.message });
+    if (error) {
+      console.error('Erro ao processar webhook:', error);
+      return res.status(400).json({ message: error.message });
     }
+    
+    // Confirma o recebimento do evento
+    return res.status(200).json({ received: true });
   } catch (error: any) {
-    console.error("Webhook processing error:", error);
-    res.status(500).json({ message: `Error processing webhook: ${error.message}` });
+    console.error('Erro no webhook do Stripe:', error);
+    return res.status(500).json({ 
+      message: 'Erro ao processar webhook',
+      error: error.message
+    });
   }
 });

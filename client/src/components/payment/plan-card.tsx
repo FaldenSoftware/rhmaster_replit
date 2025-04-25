@@ -1,14 +1,24 @@
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { CheckIcon, XIcon } from 'lucide-react';
+import { motion } from 'framer-motion';
 
+// Tipo para as características do plano
 export type PlanFeature = {
   name: string;
   included: boolean;
 };
 
+// Propriedades do componente de cartão de plano
 export type PlanProps = {
   id: string;
   name: string;
@@ -32,62 +42,86 @@ export function PlanCard({
   onSelect,
   disabled = false
 }: PlanProps) {
+  
+  // Handler para seleção do plano
+  const handleSelect = () => {
+    if (!disabled) {
+      onSelect(id);
+    }
+  };
+  
   return (
     <Card 
-      className={cn(
-        "relative flex flex-col justify-between overflow-hidden transition-all border-2",
-        popular ? "border-primary shadow-lg scale-[1.02]" : "border-muted",
-        current ? "bg-primary/5" : ""
-      )}
+      className={`h-full relative ${
+        popular 
+          ? 'border-primary shadow-md' 
+          : current 
+            ? 'border-secondary shadow-sm' 
+            : ''
+      }`}
     >
       {popular && (
-        <div className="absolute top-0 right-0">
-          <div className="text-xs font-bold uppercase text-white bg-primary py-1 px-3 rounded-bl-md">
-            Popular
-          </div>
+        <div className="absolute -top-3 left-0 right-0 flex justify-center">
+          <Badge 
+            variant="default" 
+            className="rounded-full px-4 py-1 bg-primary text-primary-foreground"
+          >
+            Mais Popular
+          </Badge>
         </div>
       )}
       
-      <div>
-        <CardHeader>
-          <CardTitle className="text-xl">{name}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="mb-4">
-            <span className="text-3xl font-bold">R${price.toFixed(2)}</span>
-            <span className="text-muted-foreground">/mês</span>
-          </div>
-          
-          <ul className="space-y-2">
-            {features.map((feature, index) => (
-              <li key={index} className="flex items-center gap-2">
-                {feature.included ? (
-                  <Check className="h-4 w-4 text-primary" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className={cn(
-                  "text-sm",
-                  !feature.included && "text-muted-foreground line-through"
-                )}>
-                  {feature.name}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </div>
+      {current && (
+        <div className="absolute -top-3 left-0 right-0 flex justify-center">
+          <Badge 
+            variant="secondary" 
+            className="rounded-full px-4 py-1"
+          >
+            Plano Atual
+          </Badge>
+        </div>
+      )}
       
-      <CardFooter className="pt-4">
-        <Button 
-          className="w-full" 
-          variant={current ? "secondary" : popular ? "default" : "outline"}
-          onClick={() => onSelect(id)}
-          disabled={disabled || current}
+      <CardHeader>
+        <CardTitle>{name}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <div className="mt-4">
+          <span className="text-3xl font-bold">
+            R${price.toFixed(2)}
+          </span>
+          <span className="text-muted-foreground">/mês</span>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          {features.map((feature, index) => (
+            <div 
+              key={index} 
+              className="flex items-center gap-2"
+            >
+              {feature.included ? (
+                <CheckIcon className="h-5 w-5 text-primary flex-shrink-0" />
+              ) : (
+                <XIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              )}
+              
+              <span className={`text-sm ${!feature.included ? 'text-muted-foreground' : ''}`}>
+                {feature.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+      
+      <CardFooter>
+        <Button
+          onClick={handleSelect}
+          className="w-full"
+          variant={popular ? "default" : "outline"}
+          disabled={disabled}
         >
-          {current ? "Plano Atual" : "Selecionar Plano"}
+          {current ? 'Plano Atual' : 'Selecionar Plano'}
         </Button>
       </CardFooter>
     </Card>
