@@ -8,8 +8,17 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { DashboardLayout } from "@/layouts/dashboard-layout";
 
 export function ClientProfileTab() {
+  return (
+    <DashboardLayout>
+      <ProfileContent />
+    </DashboardLayout>
+  );
+}
+
+function ProfileContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
