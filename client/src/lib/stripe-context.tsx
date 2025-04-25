@@ -1,62 +1,63 @@
-import React, { createContext, useContext, ReactNode } from 'react';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { createContext, useContext, ReactNode, useState } from 'react';
+import { loadStripe, Stripe, StripeElementsOptions } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
+import { useTheme } from '@/hooks/use-theme';
 
-// Certifique-se de que a chave pública do Stripe está definida
-const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-
-if (!stripePublicKey) {
-  throw new Error(
-    'VITE_STRIPE_PUBLIC_KEY não está definido! Verifique seu arquivo .env'
-  );
+// Certifique-se de que a chave pública do Stripe está disponível
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  console.warn('Chave pública do Stripe não configurada! Defina VITE_STRIPE_PUBLIC_KEY no arquivo .env');
 }
 
-// Carregar o Stripe fora do componente para evitar recriações desnecessárias
-const stripePromise = loadStripe(stripePublicKey);
+// Carregue o objeto Stripe fora do componente para evitar recriação em cada renderização
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || '');
 
-// Definição do contexto
 type StripeContextType = {
-  stripePromise: Promise<Stripe | null>;
+  isLoading: boolean;
 };
 
-const StripeContext = createContext<StripeContextType | null>(null);
+const StripeContext = createContext<StripeContextType | undefined>(undefined);
 
-// Hook para uso do contexto
-export const useStripe = () => {
+export function useStripe() {
   const context = useContext(StripeContext);
   if (!context) {
     throw new Error('useStripe deve ser usado dentro de um StripeProvider');
   }
   return context;
+}
+
+type StripeProviderProps = {
+  children: ReactNode;
 };
 
-// Componente Provider
-export const StripeProvider = ({ children }: { children: ReactNode }) => {
+export function StripeProvider({ children }: StripeProviderProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   return (
-    <StripeContext.Provider value={{ stripePromise }}>
+    <StripeContext.Provider value={{ isLoading }}>
       {children}
     </StripeContext.Provider>
   );
-};
+}
 
-// Componente para envolver elementos que precisam do Stripe
-export const StripeElementsProvider = ({ 
-  children, 
-  clientSecret 
-}: { 
+type StripeElementsProviderProps = {
   children: ReactNode;
   clientSecret: string;
-}) => {
-  const options = {
+};
+
+export function StripeElementsProvider({ children, clientSecret }: StripeElementsProviderProps) {
+  const { theme } = useTheme();
+  
+  // Defina as opções para os elementos do Stripe, incluindo o tema
+  const options: StripeElementsOptions = {
     clientSecret,
     appearance: {
-      theme: 'stripe',
+      theme: theme === 'dark' ? 'night' : 'stripe',
       variables: {
         colorPrimary: '#006B6B', // Verde-azulado
-        colorBackground: '#ffffff',
-        colorText: '#30313d',
+        colorBackground: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+        colorText: theme === 'dark' ? '#ffffff' : '#1a1a1a',
         colorDanger: '#df1b41',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         spacingUnit: '4px',
         borderRadius: '4px',
       },
@@ -68,4 +69,4 @@ export const StripeElementsProvider = ({
       {children}
     </Elements>
   );
-};
+}

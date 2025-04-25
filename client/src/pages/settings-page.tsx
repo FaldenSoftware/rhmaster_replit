@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,32 @@ import { useForm } from "react-hook-form";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { SubscriptionManagement } from "@/components/payment/subscription-management";
+import { StripeProvider } from "@/lib/stripe-context";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
   const { user, logoutMutation } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+  const [location, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("profile");
+
+  // Verificar se há parâmetros na URL relacionados à assinatura
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('subscription_success') === 'true') {
+      setActiveTab("subscription");
+      toast({
+        title: 'Assinatura processada com sucesso!',
+        description: 'Seu plano foi ativado com sucesso.',
+      });
+      
+      // Limpar o parâmetro da URL sem recarregar a página
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
 
   if (!user) {
     return <Redirect to="/auth" />;
@@ -43,11 +64,14 @@ export default function SettingsPage() {
     <div className="container py-10">
       <h1 className="text-3xl font-bold mb-6">Configurações</h1>
       
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
         <TabsList className="mb-8">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
           <TabsTrigger value="account">Conta</TabsTrigger>
+          {user.role === 'mentor' && (
+            <TabsTrigger value="subscription">Assinatura</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="profile">
@@ -198,6 +222,15 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Aba de assinatura - Só para mentores */}
+        {user.role === 'mentor' && (
+          <TabsContent value="subscription">
+            <StripeProvider>
+              <SubscriptionManagement />
+            </StripeProvider>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
