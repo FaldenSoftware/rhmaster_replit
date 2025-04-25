@@ -7,14 +7,27 @@ import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
 import MentorDashboard from "@/pages/mentor-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
+import TestAssignmentKanban from "@/pages/mentor/test-assignment-kanban";
+import { ClientsTab } from "@/pages/mentor/clients-tab";
+import { ProfileTab } from "@/pages/mentor/profile-tab";
+import { TestsTab } from "@/pages/mentor/tests-tab";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
+      
+      {/* Dashboard do mentor e sub-rotas */}
       <ProtectedRoute path="/mentor-dashboard" component={MentorDashboard} />
+      <ProtectedRoute path="/mentor-dashboard/clients" component={ClientsTab} />
+      <ProtectedRoute path="/mentor-dashboard/tests" component={TestsTab} />
+      <ProtectedRoute path="/mentor-dashboard/test-assignment" component={TestAssignmentKanban} />
+      <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
+      
+      {/* Dashboard do cliente */}
       <ProtectedRoute path="/client-dashboard" component={ClientDashboard} />
+      
       <Route component={NotFound} />
     </Switch>
   );

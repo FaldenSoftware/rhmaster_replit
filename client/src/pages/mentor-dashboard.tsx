@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useRoute, Link } from "wouter";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, UsersRound, ClipboardList, TrendingUp, Mail, User, Settings } from "lucide-react";
@@ -8,7 +9,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend
 } from "recharts";
@@ -16,6 +17,7 @@ import { ClientsTab } from "./mentor/clients-tab";
 import { TestsTab } from "./mentor/tests-tab";
 import { ProfileTab } from "./mentor/profile-tab";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const data = [
   { name: 'Jan', completedTests: 12, activeClients: 5 },
@@ -28,12 +30,26 @@ const data = [
 
 export default function MentorDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [location, setLocation] = useLocation();
+
+  // Quando o tab mudar, navegue para a rota apropriada
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    
+    // Se não for dashboard, navegar para a subpágina
+    if (tab !== "dashboard") {
+      setLocation(`/mentor-dashboard/${tab}`);
+    } else {
+      // Voltar para o dashboard raiz
+      setLocation("/mentor-dashboard");
+    }
+  };
 
   return (
     <DashboardLayout>
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="space-y-6"
       >
         <div className="border-b">
@@ -156,7 +172,7 @@ export default function MentorDashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
                 <Bar dataKey="completedTests" name="Testes Completados" fill="hsl(var(--chart-1))" />
                 <Bar dataKey="activeClients" name="Clientes Ativos" fill="hsl(var(--chart-2))" />

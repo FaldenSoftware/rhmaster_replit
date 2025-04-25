@@ -3,7 +3,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TestAssignmentKanban from "./test-assignment-kanban";
 import { ClipboardList, Activity, ListTodo } from "lucide-react";
 
+import { DashboardLayout } from "@/layouts/dashboard-layout";
+
 export function TestsTab() {
+  return (
+    <DashboardLayout>
+      <div className="container mx-auto py-6">
+        <TestsTabContent />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export function TestsTabContent() {
   const [activeTestTab, setActiveTestTab] = useState("assignment");
 
   return (

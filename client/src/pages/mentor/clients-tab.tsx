@@ -102,7 +102,19 @@ const clients: ClientData[] = [
   }
 ];
 
+import { DashboardLayout } from "@/layouts/dashboard-layout";
+
 export function ClientsTab() {
+  return (
+    <DashboardLayout>
+      <div className="container mx-auto py-6">
+        <ClientsTabContent />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export function ClientsTabContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [showInviteDialog, setShowInviteDialog] = useState(false);

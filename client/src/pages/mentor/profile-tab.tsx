@@ -11,7 +11,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { DashboardLayout } from "@/layouts/dashboard-layout";
+
 export function ProfileTab() {
+  return (
+    <DashboardLayout>
+      <div className="container mx-auto py-6">
+        <ProfileTabContent />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export function ProfileTabContent() {
   const { user, logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState("general");
   
