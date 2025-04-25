@@ -1,0 +1,43 @@
+Implemente o schema de banco de dados PostgreSQL para o RH Master, uma plataforma SaaS para mentores treinarem seus líderes/clientes. O banco de dados deve suportar todas as funcionalidades da plataforma de forma eficiente e escalável.
+
+Crie os scripts SQL para as seguintes tabelas principais:
+1. Users - informações de todos os usuários (mentores e clientes)
+2. Mentors - informações específicas dos mentores
+3. Clients - informações específicas dos clientes
+4. Invitations - gerenciamento de convites
+5. Tests - tipos de testes disponíveis
+6. Questions - perguntas de cada teste
+7. Options - opções de resposta para cada pergunta
+8. TestAssignments - atribuição de testes aos clientes
+9. TestResponses - respostas dos clientes aos testes
+10. TestResults - resultados processados dos testes
+11. GamificationPoints - pontos de gamificação dos clientes
+12. Achievements - conquistas desbloqueáveis
+13. ClientAchievements - relação entre clientes e conquistas
+14. AIAssistantInteractions - interações com assistentes de IA
+15. Subscriptions - assinaturas dos mentores
+16. Payments - registros de pagamentos
+
+Cada tabela deve incluir:
+- Chaves primárias e estrangeiras apropriadas
+- Tipos de dados otimizados para cada coluna
+- Constraints necessárias (NOT NULL, UNIQUE, etc.)
+- Timestamps para criação e atualização
+- Enums para campos com valores predefinidos
+
+Além disso, crie:
+- Índices para otimizar consultas frequentes
+- Migrations para controle de versão do schema
+- Funções ou triggers para lógicas específicas (como cálculo de pontos de gamificação)
+
+Garanta que o schema suporte:
+- Relacionamentos corretos entre todas as entidades
+- Integridade referencial
+- Escalabilidade para crescimento futuro
+- Consultas eficientes para as operações mais comuns
+
+Forneça também exemplos de consultas SQL para operações comuns, como:
+- Listar todos os clientes de um mentor específico
+- Obter resultados de testes de um cliente
+- Calcular ranking de gamificação
+- Verificar status de assinatura de um mentor
