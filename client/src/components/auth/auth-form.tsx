@@ -27,9 +27,7 @@ const registerSchema = z.object({
   username: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
   name: z.string().min(1, "Nome é obrigatório"),
-  role: z.enum(["mentor", "client"], {
-    required_error: "Selecione o tipo de conta",
-  }),
+  role: z.literal("mentor"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -187,27 +185,11 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                 )}
               />
               
-              <FormField
-                control={registerForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Conta</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo de conta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="mentor">Mentor</SelectItem>
-                        <SelectItem value="client">Cliente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Role é fixo como mentor */}
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Criando uma conta de <span className="font-semibold text-primary">Mentor</span></p>
+                <p className="mt-1">Clientes só podem se cadastrar por convite enviado por um mentor.</p>
+              </div>
               
               <Button 
                 type="submit" 
