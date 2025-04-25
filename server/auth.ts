@@ -61,7 +61,14 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
+        // Primeiro tentamos buscar pelo username
+        let user = await storage.getUserByUsername(username);
+        
+        // Se não encontrou pelo username, tenta pelo email
+        if (!user) {
+          user = await storage.getUserByEmail(username);
+        }
+        
         if (!user) {
           return done(null, false, { message: "Usuário não encontrado" });
         }
@@ -89,9 +96,18 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Este e-mail já está em uso" });
+      // Verificar se o nome de usuário já existe
+      const existingUsername = await storage.getUserByUsername(req.body.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Este nome de usuário já está em uso" });
+      }
+      
+      // Verificar se o email já existe
+      if (req.body.email) {
+        const existingEmail = await storage.getUserByEmail(req.body.email);
+        if (existingEmail) {
+          return res.status(400).json({ message: "Este e-mail já está em uso" });
+        }
       }
 
       const user = await storage.createUser({

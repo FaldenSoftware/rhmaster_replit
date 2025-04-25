@@ -46,6 +46,7 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private usersByEmail: Map<string, number>; // Mapa de emails para IDs de usuários
   private mentorClients: Map<number, Set<number>>;
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
@@ -59,6 +60,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.usersByEmail = new Map();
     this.mentorClients = new Map();
     this.conversations = new Map();
     this.messages = new Map();
@@ -255,6 +257,24 @@ export class MemStorage implements IStorage {
     console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
     return user;
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    console.log(`Procurando usuário com email: "${email}"`);
+    
+    // Se temos mapeamento de email para ID
+    if (this.usersByEmail.has(email)) {
+      const userId = this.usersByEmail.get(email);
+      return this.users.get(userId!);
+    }
+    
+    // Caso contrário, busque por todos os usuários
+    const user = Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+    
+    console.log('Usuário encontrado por email:', user || 'Nenhum usuário encontrado');
+    return user;
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
@@ -274,6 +294,11 @@ export class MemStorage implements IStorage {
     };
     
     this.users.set(id, user);
+    
+    // Armazenar email para acesso rápido
+    if (user.email) {
+      this.usersByEmail.set(user.email, id);
+    }
     
     // If this is a client and has a mentorId, add to the mentor's clients
     if (user.role === 'client' && user.mentorId) {
@@ -303,6 +328,7 @@ export class MemStorage implements IStorage {
     const adminMentor = {
       id: this.currentId++,
       username: "admin",
+      email: "admin@rhmaster.com.br", // Adicionar email para mentor
       password: "21232f297a57a5a743894a0e4a801fc3", // 'admin' com hash md5 correto
       name: "Marcos Silva",
       role: "mentor" as const,
@@ -315,11 +341,13 @@ export class MemStorage implements IStorage {
       mentorId: null
     };
     this.users.set(adminMentor.id, adminMentor as User);
+    this.usersByEmail.set(adminMentor.email, adminMentor.id);
 
     // Usuário cliente com login 'cliente'
     const adminClient = {
       id: this.currentId++,
       username: "cliente",
+      email: "cliente@empresa.com.br", // Adicionar email para cliente
       password: "21232f297a57a5a743894a0e4a801fc3", // 'admin' com hash md5 correto
       name: "Ana Oliveira",
       role: "client" as const,
@@ -332,6 +360,7 @@ export class MemStorage implements IStorage {
       position: "Gerente de Produto",
     };
     this.users.set(adminClient.id, adminClient as User);
+    this.usersByEmail.set(adminClient.email, adminClient.id);
 
     // Set up the mentor-client relationship
     this.mentorClients.set(adminMentor.id, new Set([adminClient.id]));
