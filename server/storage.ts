@@ -18,6 +18,7 @@ export interface IStorage {
   // Usuários
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllMentors(): Promise<User[]>;
   getClientsByMentorId(mentorId: number): Promise<User[]>;
@@ -358,6 +359,16 @@ export class DatabaseStorage implements IStorage {
     console.log(`Procurando usuário com username: "${username}"`);
     
     const result = await db.select().from(users).where(eq(users.username, username));
+    const user = result[0];
+    
+    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
+    return user;
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    console.log(`Procurando usuário com email: "${email}"`);
+    
+    const result = await db.select().from(users).where(eq(users.email, email));
     const user = result[0];
     
     console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');

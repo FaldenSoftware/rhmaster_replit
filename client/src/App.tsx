@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
+import SettingsPage from "@/pages/settings-page";
 import MentorDashboard from "@/pages/mentor-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import TestAssignmentKanban from "@/pages/mentor/test-assignment-kanban";
@@ -27,6 +28,7 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/settings" component={SettingsPage} />
       
       {/* Dashboard do mentor e sub-rotas */}
       <ProtectedRoute path="/mentor-dashboard" component={MentorDashboard} />
