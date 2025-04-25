@@ -42,8 +42,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 
+// Definição do tipo para os testes
+type TestData = {
+  id: number;
+  title: string;
+  description: string;
+  type: "behavioral" | "assessment";
+  status: "active" | "draft";
+  questionsCount: number;
+  assignedCount: number;
+  completedCount: number;
+  createdAt: string;
+};
+
 // Dados mockados para exemplo
-const tests = [
+const tests: TestData[] = [
   {
     id: 1,
     title: "Avaliação de Perfil de Liderança",
@@ -336,8 +349,13 @@ export function TestsTab() {
                       <h4 className="font-medium text-slate-900">{test.title}</h4>
                       <p className="text-sm text-muted-foreground">{test.completedCount} de {test.assignedCount} clientes completaram este teste</p>
                       <div className="flex items-center gap-2 pt-1">
-                        <Progress value={(test.completedCount / test.assignedCount) * 100} className="h-2 w-[150px]" />
-                        <span className="text-xs font-medium">{Math.round((test.completedCount / test.assignedCount) * 100)}%</span>
+                        <Progress 
+                          value={test.assignedCount > 0 ? (test.completedCount / test.assignedCount) * 100 : 0} 
+                          className="h-2 w-[150px]" 
+                        />
+                        <span className="text-xs font-medium">
+                          {test.assignedCount > 0 ? Math.round((test.completedCount / test.assignedCount) * 100) : 0}%
+                        </span>
                       </div>
                     </div>
                     <div className="ml-auto">

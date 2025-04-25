@@ -41,8 +41,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ClientInviteDialog } from "@/components/dashboard/client-invite-dialog";
 
+// Definição do tipo para os clientes
+type ClientData = {
+  id: number;
+  name: string;
+  email: string;
+  status: "active" | "pending";
+  testsAssigned: number;
+  testsCompleted: number;
+  lastActivity?: string;
+  invitedAt?: string;
+};
+
 // Dados mockados para exemplo
-const clients = [
+const clients: ClientData[] = [
   { 
     id: 1, 
     name: "Ana Beatriz", 
@@ -214,8 +226,8 @@ export function ClientsTab() {
                           <TableCell className="hidden md:table-cell">{client.testsCompleted}</TableCell>
                           <TableCell className="hidden md:table-cell">
                             {client.status === "active" 
-                              ? new Date(client.lastActivity).toLocaleDateString() 
-                              : `Convidado em ${new Date(client.invitedAt).toLocaleDateString()}`
+                              ? (client.lastActivity ? new Date(client.lastActivity).toLocaleDateString() : "N/A")
+                              : (client.invitedAt ? `Convidado em ${new Date(client.invitedAt).toLocaleDateString()}` : "Recentemente")
                             }
                           </TableCell>
                           <TableCell>
