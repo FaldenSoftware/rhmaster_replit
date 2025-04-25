@@ -1,5 +1,8 @@
-require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// Inicializar dotenv
+dotenv.config();
 
 // Obter a chave API do ambiente
 const apiKey = process.env.GEMINI_API_KEY;
