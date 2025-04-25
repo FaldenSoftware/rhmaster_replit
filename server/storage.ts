@@ -1,28 +1,69 @@
-import { users, type User, type InsertUser } from "@shared/schema";
+import { 
+  users, type User, type InsertUser, 
+  conversations, type Conversation, type InsertConversation,
+  messages, type Message, type InsertMessage,
+  suggestions, type Suggestion, type InsertSuggestion 
+} from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
+  // Usuários
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllMentors(): Promise<User[]>;
   getClientsByMentorId(mentorId: number): Promise<User[]>;
-  sessionStore: session.SessionStore;
+  
+  // Conversas com assistentes
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  getUserConversations(userId: number, assistantType: string): Promise<Conversation[]>;
+  getConversation(id: number): Promise<Conversation | undefined>;
+  updateConversationTitle(id: number, title: string): Promise<Conversation | undefined>;
+  deleteConversation(id: number): Promise<boolean>;
+  
+  // Mensagens
+  addMessage(message: InsertMessage): Promise<Message>;
+  getConversationMessages(conversationId: number): Promise<Message[]>;
+  updateMessageFeedback(id: number, feedback: string): Promise<Message | undefined>;
+  
+  // Sugestões
+  createSuggestion(suggestion: InsertSuggestion): Promise<Suggestion>;
+  getUserSuggestions(userId: number, assistantType: string): Promise<Suggestion[]>;
+  markSuggestionAsRead(id: number): Promise<Suggestion | undefined>;
+  deleteSuggestion(id: number): Promise<boolean>;
+  
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private mentorClients: Map<number, Set<number>>;
+  private conversations: Map<number, Conversation>;
+  private messages: Map<number, Message>;
+  private suggestions: Map<number, Suggestion>;
+  private userConversations: Map<number, Set<number>>;
   currentId: number;
-  sessionStore: session.SessionStore;
+  currentConversationId: number;
+  currentMessageId: number;
+  currentSuggestionId: number;
+  sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.mentorClients = new Map();
+    this.conversations = new Map();
+    this.messages = new Map();
+    this.suggestions = new Map();
+    this.userConversations = new Map();
+    
     this.currentId = 1;
+    this.currentConversationId = 1;
+    this.currentMessageId = 1;
+    this.currentSuggestionId = 1;
+    
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
@@ -32,6 +73,163 @@ export class MemStorage implements IStorage {
     
     // Debug: Print all users
     console.log('Usuários disponíveis:', Array.from(this.users.entries()));
+  }
+  
+  // Métodos para gerenciar conversas
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    const id = this.currentConversationId++;
+    const now = new Date().toISOString();
+    
+    const conversation: Conversation = {
+      ...insertConversation,
+      id,
+      createdAt: insertConversation.createdAt || now,
+      updatedAt: insertConversation.updatedAt || now
+    };
+    
+    this.conversations.set(id, conversation);
+    
+    // Adicionar à lista de conversas do usuário
+    if (!this.userConversations.has(conversation.userId)) {
+      this.userConversations.set(conversation.userId, new Set());
+    }
+    this.userConversations.get(conversation.userId)?.add(id);
+    
+    return conversation;
+  }
+  
+  async getUserConversations(userId: number, assistantType: string): Promise<Conversation[]> {
+    const conversationIds = this.userConversations.get(userId) || new Set();
+    return Array.from(conversationIds)
+      .map(id => this.conversations.get(id))
+      .filter(c => c && c.assistantType === assistantType) as Conversation[];
+  }
+  
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    return this.conversations.get(id);
+  }
+  
+  async updateConversationTitle(id: number, title: string): Promise<Conversation | undefined> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) return undefined;
+    
+    const updatedConversation = {
+      ...conversation,
+      title,
+      updatedAt: new Date().toISOString()
+    };
+    
+    this.conversations.set(id, updatedConversation);
+    return updatedConversation;
+  }
+  
+  async deleteConversation(id: number): Promise<boolean> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) return false;
+    
+    // Remover das conversas do usuário
+    const userConversations = this.userConversations.get(conversation.userId);
+    if (userConversations) {
+      userConversations.delete(id);
+    }
+    
+    // Remover mensagens da conversa
+    const messagesToDelete = Array.from(this.messages.values())
+      .filter(m => m.conversationId === id)
+      .map(m => m.id);
+    
+    for (const msgId of messagesToDelete) {
+      this.messages.delete(msgId);
+    }
+    
+    // Remover a conversa
+    return this.conversations.delete(id);
+  }
+  
+  // Métodos para gerenciar mensagens
+  async addMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = this.currentMessageId++;
+    const now = new Date().toISOString();
+    
+    const message: Message = {
+      ...insertMessage,
+      id,
+      timestamp: insertMessage.timestamp || now,
+      feedback: null
+    };
+    
+    this.messages.set(id, message);
+    
+    // Atualizar o timestamp da conversa
+    const conversation = this.conversations.get(message.conversationId);
+    if (conversation) {
+      const updatedConversation = {
+        ...conversation,
+        updatedAt: now
+      };
+      this.conversations.set(message.conversationId, updatedConversation);
+    }
+    
+    return message;
+  }
+  
+  async getConversationMessages(conversationId: number): Promise<Message[]> {
+    return Array.from(this.messages.values())
+      .filter(m => m.conversationId === conversationId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+  
+  async updateMessageFeedback(id: number, feedback: string): Promise<Message | undefined> {
+    const message = this.messages.get(id);
+    if (!message) return undefined;
+    
+    const updatedMessage = {
+      ...message,
+      feedback
+    };
+    
+    this.messages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+  
+  // Métodos para gerenciar sugestões
+  async createSuggestion(insertSuggestion: InsertSuggestion): Promise<Suggestion> {
+    const id = this.currentSuggestionId++;
+    const now = new Date().toISOString();
+    
+    const suggestion: Suggestion = {
+      ...insertSuggestion,
+      id,
+      createdAt: insertSuggestion.createdAt || now,
+      isRead: false
+    };
+    
+    this.suggestions.set(id, suggestion);
+    return suggestion;
+  }
+  
+  async getUserSuggestions(userId: number, assistantType: string): Promise<Suggestion[]> {
+    return Array.from(this.suggestions.values())
+      .filter(s => s.userId === userId && s.assistantType === assistantType)
+      .filter(s => !s.expiresAt || new Date(s.expiresAt).getTime() > Date.now())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  
+  async markSuggestionAsRead(id: number): Promise<Suggestion | undefined> {
+    const suggestion = this.suggestions.get(id);
+    if (!suggestion) return undefined;
+    
+    const updatedSuggestion = {
+      ...suggestion,
+      isRead: true
+    };
+    
+    this.suggestions.set(id, updatedSuggestion);
+    return updatedSuggestion;
+  }
+  
+  async deleteSuggestion(id: number): Promise<boolean> {
+    return this.suggestions.delete(id);
   }
 
   async getUser(id: number): Promise<User | undefined> {

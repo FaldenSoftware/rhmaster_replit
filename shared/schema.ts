@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -123,3 +123,74 @@ export const insertGamificationSchema = createInsertSchema(gamification).pick({
 
 export type InsertGamification = z.infer<typeof insertGamificationSchema>;
 export type Gamification = typeof gamification.$inferSelect;
+
+// Schema para conversas com assistentes de IA
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  assistantType: text("assistant_type", { enum: ["mentor", "client"] }).notNull(),
+  title: text("title").notNull(),
+  createdAt: text("created_at").notNull(), // ISO date string
+  updatedAt: text("updated_at").notNull(), // ISO date string
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).pick({
+  userId: true,
+  assistantType: true,
+  title: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+
+// Schema para mensagens nas conversas
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull(),
+  content: text("content").notNull(),
+  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  timestamp: text("timestamp").notNull(), // ISO date string
+  contextData: text("context_data"), // Dados contextuais opcionais em JSON
+  feedback: text("feedback", { enum: ["positive", "negative", "neutral"] }),
+});
+
+export const insertMessageSchema = createInsertSchema(messages).pick({
+  conversationId: true,
+  content: true,
+  role: true,
+  timestamp: true,
+  contextData: true,
+});
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
+
+// Schema para sugestões proativas
+export const suggestions = pgTable("suggestions", {
+  id: serial("id").primaryKey(), 
+  userId: integer("user_id").notNull(),
+  assistantType: text("assistant_type", { enum: ["mentor", "client"] }).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  contextType: text("context_type", { 
+    enum: ["test_results", "client_progress", "profile_analysis", "test_taking", "dashboard"] 
+  }).notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: text("created_at").notNull(), // ISO date string
+  expiresAt: text("expires_at"), // ISO date string opcional
+});
+
+export const insertSuggestionSchema = createInsertSchema(suggestions).pick({
+  userId: true, 
+  assistantType: true,
+  title: true,
+  content: true,
+  contextType: true,
+  createdAt: true,
+  expiresAt: true,
+});
+
+export type InsertSuggestion = z.infer<typeof insertSuggestionSchema>;
+export type Suggestion = typeof suggestions.$inferSelect;
