@@ -57,6 +57,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
+      role: insertUser.role || "client", // Garantir que role sempre tenha um valor
       mentorId: insertUser.mentorId ?? null,
       plan: insertUser.plan ?? null,
       active: true,
@@ -96,7 +97,7 @@ export class MemStorage implements IStorage {
     const adminMentor = {
       id: this.currentId++,
       username: "admin",
-      password: "827ccb0eea8a706c4c34a16891f84e7b", // 'admin' com hash md5 (temporário)
+      password: "21232f297a57a5a743894a0e4a801fc3", // 'admin' com hash md5 correto
       name: "Marcos Silva",
       role: "mentor" as const,
       plan: "enterprise" as const,
@@ -113,7 +114,7 @@ export class MemStorage implements IStorage {
     const adminClient = {
       id: this.currentId++,
       username: "cliente",
-      password: "827ccb0eea8a706c4c34a16891f84e7b", // 'admin' com hash md5 (temporário)
+      password: "21232f297a57a5a743894a0e4a801fc3", // 'admin' com hash md5 correto
       name: "Ana Oliveira",
       role: "client" as const,
       mentorId: adminMentor.id,
