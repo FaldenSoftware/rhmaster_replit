@@ -19,7 +19,13 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User | undefined>;
+  updateUserStripeInfo(userId: number, stripeInfo: { 
+    stripeCustomerId?: string, 
+    stripeSubscriptionId?: string | null 
+  }): Promise<User | undefined>;
   getAllMentors(): Promise<User[]>;
   getClientsByMentorId(mentorId: number): Promise<User[]>;
   
@@ -322,6 +328,53 @@ export class MemStorage implements IStorage {
     const clientIds = this.mentorClients.get(mentorId) || new Set();
     return Array.from(clientIds).map(id => this.users.get(id)).filter(Boolean) as User[];
   }
+  
+  async getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined> {
+    console.log(`Procurando usuário com subscriptionId: "${subscriptionId}"`);
+    
+    // Buscar usuário pelo ID da assinatura Stripe
+    const user = Array.from(this.users.values()).find(
+      (user) => user.stripeSubscriptionId === subscriptionId
+    );
+    
+    console.log('Usuário encontrado por subscriptionId:', user || 'Nenhum usuário encontrado');
+    return user;
+  }
+  
+  async updateUserStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User | undefined> {
+    console.log(`Atualizando ID de cliente Stripe para usuário ${userId}: ${stripeCustomerId}`);
+    
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      stripeCustomerId,
+      updatedAt: new Date().toISOString()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async updateUserStripeInfo(userId: number, stripeInfo: { 
+    stripeCustomerId?: string, 
+    stripeSubscriptionId?: string | null
+  }): Promise<User | undefined> {
+    console.log(`Atualizando informações do Stripe para usuário ${userId}:`, stripeInfo);
+    
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      ...stripeInfo,
+      updatedAt: new Date().toISOString()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
 
   private addSampleData() {
     // Usuário mentor com login 'admin'
@@ -438,7 +491,7 @@ export class DatabaseStorage implements IStorage {
   
   async updateUserStripeInfo(userId: number, stripeInfo: { 
     stripeCustomerId?: string, 
-    stripeSubscriptionId?: string 
+    stripeSubscriptionId?: string | null
   }): Promise<User | undefined> {
     console.log(`Atualizando informações do Stripe para usuário ${userId}:`, stripeInfo);
     
@@ -452,6 +505,16 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     const user = result[0];
+    return user;
+  }
+  
+  async getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined> {
+    console.log(`Procurando usuário com subscriptionId: "${subscriptionId}"`);
+    
+    const result = await db.select().from(users).where(eq(users.stripeSubscriptionId, subscriptionId));
+    const user = result[0];
+    
+    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
     return user;
   }
 

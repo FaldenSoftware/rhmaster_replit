@@ -219,9 +219,8 @@ export const stripeService = {
       // Busca usuário pela assinatura para atualizar seu status no banco
       const user = await storage.getUserByStripeSubscriptionId(subscriptionId);
       if (user) {
-        await storage.updateUserSubscription(user.id, {
-          cancelAtPeriodEnd: false
-        });
+        // Assinatura reativada - não precisamos fazer nada especial aqui
+      // pois só estamos rastreando o ID da assinatura
       }
 
       return true;
@@ -325,10 +324,8 @@ export const stripeService = {
     // Atualiza o status da assinatura do usuário
     const user = await storage.getUser(parseInt(userId));
     if (user) {
-      await storage.updateUserSubscription(user.id, {
-        status: subscription.status,
-        maxClients: PLANS[planId].maxClients,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000)
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: subscription.id
       });
     }
   },
@@ -343,10 +340,8 @@ export const stripeService = {
     // Atualiza o status da assinatura do usuário
     const user = await storage.getUser(parseInt(userId));
     if (user) {
-      await storage.updateUserSubscription(user.id, {
-        status: subscription.status,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: subscription.id
       });
     }
   },
@@ -361,8 +356,8 @@ export const stripeService = {
     // Marca a assinatura como cancelada
     const user = await storage.getUser(parseInt(userId));
     if (user) {
-      await storage.updateUserSubscription(user.id, {
-        status: 'canceled',
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: null
       });
     }
   },
@@ -382,9 +377,10 @@ export const stripeService = {
       // Registra a fatura no sistema
       const user = await storage.getUser(parseInt(userId));
       if (user) {
-        // Aqui você pode registrar a fatura no seu banco de dados
+        // Aqui você poderia registrar a fatura no seu banco de dados
         // e enviar uma notificação ou e-mail para o usuário
-        await storage.createInvoiceRecord({
+        // Mas como não temos ainda a tabela de faturas, vamos apenas logar
+        console.log('Fatura paga:', {
           userId: user.id,
           stripeInvoiceId: invoice.id,
           amount: invoice.amount_paid / 100, // Convertendo de centavos para a moeda
@@ -424,7 +420,8 @@ export const stripeService = {
       const user = await storage.getUser(parseInt(userId));
       if (user) {
         // Registra a fatura com status de falha
-        await storage.createInvoiceRecord({
+        // Aqui também não temos a tabela, então apenas logamos
+        console.log('Fatura com falha de pagamento:', {
           userId: user.id,
           stripeInvoiceId: invoice.id,
           amount: invoice.amount_due / 100, // Convertendo de centavos para a moeda
@@ -435,10 +432,8 @@ export const stripeService = {
           description: invoice.description || `Fatura #${invoice.number} (Falha no pagamento)`
         });
 
-        // Atualiza o status da assinatura para indicar problema de pagamento
-        await storage.updateUserSubscription(user.id, {
-          status: subscription.status
-        });
+        // Não precisamos fazer nada especial para indicar problema de pagamento
+        // já que só estamos rastreando o ID da assinatura
 
         // Aqui você pode enviar uma notificação para o usuário sobre o problema no pagamento
       }
