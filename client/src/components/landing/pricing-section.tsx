@@ -1,11 +1,16 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function PricingSection() {
   // Toggle between monthly and annual billing
   const [annual, setAnnual] = useState(false);
+  
+  // State for carousel
+  const [activePlanIndex, setActivePlanIndex] = useState(0);
+  const carouselInterval = useRef<NodeJS.Timeout | null>(null);
   
   // Discounted rate for annual plans (20% off)
   const annualDiscount = 0.8;
@@ -27,7 +32,8 @@ export function PricingSection() {
         "Sem integração de calendário",
         "Sem análise de progresso avançada",
         "Sem recursos de comunidade"
-      ]
+      ],
+      color: "bg-gradient-to-br from-blue-500 to-blue-700"
     },
     {
       name: "Mentor Pro",
@@ -48,7 +54,8 @@ export function PricingSection() {
       limitations: [
         "Sem API para integração externa",
         "Sem acesso aos recursos Enterprise"
-      ]
+      ],
+      color: "bg-primary"
     },
     {
       name: "Enterprise",
@@ -67,9 +74,51 @@ export function PricingSection() {
         "Treinamento e onboarding da equipe",
         "SLA personalizado"
       ],
-      limitations: []
+      limitations: [],
+      color: "bg-gradient-to-br from-purple-500 to-purple-800"
     }
   ];
+
+  // Start the carousel to switch plans automatically every 3 seconds
+  useEffect(() => {
+    carouselInterval.current = setInterval(() => {
+      setActivePlanIndex((prevIndex) => (prevIndex + 1) % plans.length);
+    }, 3000);
+    
+    return () => {
+      if (carouselInterval.current) {
+        clearInterval(carouselInterval.current);
+      }
+    };
+  }, [plans.length]);
+
+  // Reset the interval when manually changing the active plan
+  const handlePlanChange = (index: number) => {
+    setActivePlanIndex(index);
+    
+    if (carouselInterval.current) {
+      clearInterval(carouselInterval.current);
+    }
+    
+    carouselInterval.current = setInterval(() => {
+      setActivePlanIndex((prevIndex) => (prevIndex + 1) % plans.length);
+    }, 3000);
+  };
+
+  // Go to previous plan
+  const prevPlan = () => {
+    const newIndex = (activePlanIndex - 1 + plans.length) % plans.length;
+    handlePlanChange(newIndex);
+  };
+
+  // Go to next plan
+  const nextPlan = () => {
+    const newIndex = (activePlanIndex + 1) % plans.length;
+    handlePlanChange(newIndex);
+  };
+
+  // Current active plan
+  const activePlan = plans[activePlanIndex];
 
   return (
     <section id="pricing" className="py-20 bg-slate-50">
@@ -112,7 +161,101 @@ export function PricingSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Mobile Carousel View */}
+        <div className="md:hidden relative">
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={activePlanIndex}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+              className="relative"
+            >
+              <div className={`${activePlan.color} text-white rounded-xl overflow-hidden shadow-xl`}>
+                {activePlan.popular && (
+                  <div className="absolute top-0 right-0 bg-yellow-400 text-primary-foreground text-xs font-bold py-1 px-3 transform rotate-6 shadow-lg m-2">
+                    Oferta por tempo limitado!
+                  </div>
+                )}
+                
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold mb-1">{activePlan.name}</h3>
+                  <p className="opacity-80 mb-4">{activePlan.description}</p>
+                  
+                  <div className="mb-6">
+                    <div className="flex items-end">
+                      <span className="text-5xl font-bold">
+                        R${annual 
+                          ? Math.round(activePlan.monthlyPrice * annualDiscount)
+                          : activePlan.monthlyPrice
+                        }
+                      </span>
+                      <span className="ml-2 opacity-80">/{annual ? 'mês*' : 'mês'}</span>
+                    </div>
+                    {annual && (
+                      <p className="text-xs opacity-80 mt-1">
+                        *Cobrado anualmente como 
+                        R${Math.round(activePlan.monthlyPrice * annualDiscount * 12)}/ano
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3 mb-6">
+                    {activePlan.features.slice(0, 5).map((feature, i) => (
+                      <div key={i} className="flex items-start">
+                        <Check className="h-5 w-5 flex-shrink-0 mr-2" />
+                        <span className="text-sm">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Link href="/auth">
+                    <Button 
+                      className="w-full bg-white text-slate-900 hover:bg-slate-100"
+                    >
+                      {activePlan.name === "Enterprise" ? "Fale Conosco" : "Começar Teste Gratuito"}
+                    </Button>
+                  </Link>
+                  
+                  <p className="text-xs text-center mt-4 opacity-80">
+                    Cancele a qualquer momento durante o período de teste
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="flex justify-center mt-6 space-x-2">
+            {plans.map((_, index) => (
+              <button 
+                key={index}
+                onClick={() => handlePlanChange(index)}
+                className={`w-3 h-3 rounded-full ${index === activePlanIndex ? 'bg-primary' : 'bg-slate-300'}`}
+                aria-label={`Ir para plano ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          <button 
+            onClick={prevPlan}
+            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md"
+            aria-label="Plano anterior"
+          >
+            <ChevronLeft className="h-5 w-5 text-slate-700" />
+          </button>
+          
+          <button 
+            onClick={nextPlan}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md"
+            aria-label="Próximo plano"
+          >
+            <ChevronRight className="h-5 w-5 text-slate-700" />
+          </button>
+        </div>
+
+        {/* Desktop View - All Plans Visible */}
+        <div className="hidden md:grid md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <div
               key={index}
