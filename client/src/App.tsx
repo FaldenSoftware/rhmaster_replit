@@ -19,6 +19,8 @@ import { ClientTestsTab } from "@/pages/client/tests-tab";
 import { ClientProfileTab } from "@/pages/client/profile-tab";
 import { ResultsTab } from "@/pages/client/results-tab";
 import { AchievementsTab } from "@/pages/client/achievements-tab";
+import MentorAssistantPage from "@/pages/mentor/assistant-page";
+import ClientAssistantPage from "@/pages/client/assistant-page";
 
 function Router() {
   return (
@@ -36,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/mentor-dashboard/invites" component={InvitesTab} />
       <ProtectedRoute path="/mentor-dashboard/settings" component={SettingsTab} />
       <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
+      <ProtectedRoute path="/mentor-dashboard/assistant" component={MentorAssistantPage} />
       
       {/* Dashboard do cliente e sub-rotas */}
       <ProtectedRoute path="/client-dashboard" component={ClientDashboard} />
@@ -43,6 +46,7 @@ function Router() {
       <ProtectedRoute path="/client-dashboard/results" component={ResultsTab} />
       <ProtectedRoute path="/client-dashboard/achievements" component={AchievementsTab} />
       <ProtectedRoute path="/client-dashboard/profile" component={ClientProfileTab} />
+      <ProtectedRoute path="/client-dashboard/assistant" component={ClientAssistantPage} />
       
       <Route component={NotFound} />
     </Switch>

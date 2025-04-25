@@ -10,7 +10,8 @@ import {
   Home,
   Award,
   Mail,
-  HelpCircle
+  HelpCircle,
+  BrainCircuit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,11 @@ export function Sidebar() {
       label: "Gamificação",
       icon: Award,
       href: "/mentor-dashboard/gamification",
+    },
+    {
+      label: "Assistente IA",
+      icon: BrainCircuit,
+      href: "/mentor-dashboard/assistant",
     }
   ];
 
@@ -84,6 +90,11 @@ export function Sidebar() {
       label: "Meu Perfil",
       icon: Users,
       href: "/client-dashboard/profile",
+    },
+    {
+      label: "Assistente IA",
+      icon: BrainCircuit,
+      href: "/client-dashboard/assistant",
     }
   ];
 
