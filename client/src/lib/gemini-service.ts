@@ -1,7 +1,16 @@
 import { GoogleGenerativeAI, GenerativeModel, ChatSession, GenerationConfig } from "@google/generative-ai";
 
 // Inicializando a API com a chave fornecida pelo usuário
-const API_KEY = import.meta.env.GEMINI_API_KEY;
+// No frontend, usamos import.meta.env, mas o módulo será carregado com um valor de fallback
+const API_KEY = typeof import.meta !== 'undefined' && import.meta.env ? 
+                import.meta.env.VITE_GEMINI_API_KEY : 
+                process.env.GEMINI_API_KEY || '';
+
+// Verificação de chave vazia para debug
+if (!API_KEY) {
+  console.warn('⚠️ GEMINI_API_KEY não está definida! O assistente virtual não funcionará corretamente.');
+}
+
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Define a configuração do modelo para respostas rápidas

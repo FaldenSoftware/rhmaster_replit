@@ -2,10 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { assistantRouter } from "./routes/assistant";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up authentication routes
   setupAuth(app);
+
+  // Registrar as rotas do assistente virtual
+  app.use("/api/assistant", assistantRouter);
 
   // API routes
   app.get("/api/mentors", async (req, res) => {
