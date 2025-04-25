@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -17,6 +18,20 @@ import { ClientProfileTab } from "./client/profile-tab";
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [location, setLocation] = useLocation();
+
+  // Quando o tab mudar, navegue para a rota apropriada
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    
+    // Se não for dashboard, navegar para a subpágina
+    if (tab !== "dashboard") {
+      setLocation(`/client-dashboard/${tab}`);
+    } else {
+      // Voltar para o dashboard raiz
+      setLocation("/client-dashboard");
+    }
+  };
 
   // Dados mockados para exemplo
   const upcomingTests = [
@@ -66,7 +81,7 @@ export default function ClientDashboard() {
     <DashboardLayout>
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="space-y-6"
       >
         <div className="border-b">

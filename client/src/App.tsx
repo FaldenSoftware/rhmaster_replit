@@ -13,6 +13,8 @@ import { ProfileTab } from "@/pages/mentor/profile-tab";
 import { TestsTab } from "@/pages/mentor/tests-tab";
 import { AnalyticsTab } from "@/pages/mentor/analytics-tab";
 import { GamificationTab } from "@/pages/mentor/gamification-tab";
+import { ClientTestsTab } from "@/pages/client/tests-tab";
+import { ClientProfileTab } from "@/pages/client/profile-tab";
 
 function Router() {
   return (
@@ -29,8 +31,10 @@ function Router() {
       <ProtectedRoute path="/mentor-dashboard/gamification" component={GamificationTab} />
       <ProtectedRoute path="/mentor-dashboard/profile" component={ProfileTab} />
       
-      {/* Dashboard do cliente */}
+      {/* Dashboard do cliente e sub-rotas */}
       <ProtectedRoute path="/client-dashboard" component={ClientDashboard} />
+      <ProtectedRoute path="/client-dashboard/tests" component={ClientTestsTab} />
+      <ProtectedRoute path="/client-dashboard/profile" component={ClientProfileTab} />
       
       <Route component={NotFound} />
     </Switch>
