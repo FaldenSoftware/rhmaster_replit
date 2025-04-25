@@ -1,156 +1,315 @@
-import { useState, useEffect } from 'react';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { CardElement } from '@stripe/react-stripe-js';
+import React, { useState, useEffect } from 'react';
+import { 
+  CardElement, 
+  useStripe, 
+  useElements,
+  Elements
+} from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/queryClient';
+import { Loader2, CreditCard, Lock, CheckCircle } from 'lucide-react';
+import { PLAN_IDS } from './subscription-plans';
 
-interface SubscriptionFormProps {
-  clientSecret: string;
+// Carregando o Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+
+type SubscriptionFormContainerProps = {
   planId: string;
   onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}
+  onCancel?: () => void;
+};
 
-export function SubscriptionForm({ 
-  clientSecret, 
+// Componente container que carrega o Stripe
+export function SubscriptionFormContainer({ 
   planId, 
   onSuccess, 
-  onError 
-}: SubscriptionFormProps) {
+  onCancel 
+}: SubscriptionFormContainerProps) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchClientSecret = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        // Verifica se o planId é válido
+        if (!Object.values(PLAN_IDS).includes(planId as any)) {
+          throw new Error('Plano inválido');
+        }
+
+        // Busca o client secret do Stripe para iniciar o pagamento
+        const response = await apiRequest('POST', '/api/subscription/create-subscription', { 
+          planId
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Erro ao iniciar assinatura');
+        }
+
+        const data = await response.json();
+        
+        if (!data.clientSecret) {
+          throw new Error('Não foi possível iniciar o processo de pagamento');
+        }
+        
+        setClientSecret(data.clientSecret);
+      } catch (err: any) {
+        console.error('Erro ao iniciar assinatura:', err);
+        setError(err.message || 'Erro ao processar assinatura');
+        
+        toast({
+          title: 'Erro ao iniciar assinatura',
+          description: err.message || 'Não foi possível iniciar o processo de assinatura',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClientSecret();
+  }, [planId, user, toast]);
+
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Preparando assinatura</CardTitle>
+          <CardDescription>Estamos preparando seu plano</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-8">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full max-w-md mx-auto border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Erro ao iniciar assinatura</CardTitle>
+          <CardDescription>{error}</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button onClick={onCancel} variant="outline" className="w-full">
+            Voltar
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  if (!clientSecret) {
+    return null;
+  }
+
+  return (
+    <Elements stripe={stripePromise} options={{ clientSecret }}>
+      <SubscriptionForm onSuccess={onSuccess} onCancel={onCancel} />
+    </Elements>
+  );
+}
+
+type SubscriptionFormProps = {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+};
+
+// Formulário de pagamento
+function SubscriptionForm({ onSuccess, onCancel }: SubscriptionFormProps) {
   const stripe = useStripe();
   const elements = useElements();
-  
-  const [message, setMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isComplete, setIsComplete] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (!stripe) {
-      return;
-    }
-    
-    if (!clientSecret) {
-      setError('Client secret não fornecido');
-      return;
-    }
-    
-    // Verifica o status do pagamento quando o componente é carregado
-    stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
-      switch (paymentIntent?.status) {
-        case "succeeded":
-          setMessage("Pagamento concluído com sucesso!");
-          setIsComplete(true);
-          onSuccess?.();
-          break;
-        case "processing":
-          setMessage("Seu pagamento está sendo processado.");
-          break;
-        case "requires_payment_method":
-          // Quando chega aqui, é o estado inicial normal, não configuramos mensagem
-          break;
-        default:
-          setError("Algo deu errado. Por favor, tente novamente.");
-          break;
-      }
-    });
-  }, [stripe, clientSecret, onSuccess]);
-  
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (!stripe || !elements) {
-      // Stripe.js ainda não carregou
-      // Desabilite o formulário de envio até que o Stripe.js tenha carregado
+      // O Stripe.js ainda não carregou
       return;
     }
+
+    // Limpa erros anteriores
+    setPaymentError(null);
+    setIsProcessing(true);
+
+    // Obtém o elemento do cartão
+    const cardElement = elements.getElement(CardElement);
     
-    setIsLoading(true);
-    setError(null);
-    
-    const result = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/mentor-dashboard/settings?subscription_success=true&plan=${planId}`,
-      },
-      redirect: 'if_required',
-    });
-    
-    if (result.error) {
-      // Mostra erro para o cliente
-      setError(result.error.message || 'Ocorreu um erro ao processar o pagamento');
-      onError?.(new Error(result.error.message || 'Ocorreu um erro ao processar o pagamento'));
-    } else if (result.paymentIntent?.status === 'succeeded') {
-      // O pagamento foi bem-sucedido
-      setMessage('Pagamento concluído com sucesso!');
-      setIsComplete(true);
-      onSuccess?.();
+    if (!cardElement) {
+      setPaymentError('Erro ao acessar o formulário de pagamento');
+      setIsProcessing(false);
+      return;
     }
-    
-    setIsLoading(false);
+
+    try {
+      // Confirma o pagamento com o Stripe
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        // O clientSecret foi definido quando o PaymentIntent foi criado
+        '',
+        {
+          payment_method: {
+            card: cardElement,
+          },
+        }
+      );
+
+      if (error) {
+        // Exibe erro em caso de falha no pagamento
+        setPaymentError(error.message || 'Erro ao processar o pagamento');
+        toast({
+          title: 'Falha no pagamento',
+          description: error.message || 'Ocorreu um erro ao processar seu pagamento',
+          variant: 'destructive',
+        });
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Pagamento bem-sucedido
+        setPaymentSuccess(true);
+        toast({
+          title: 'Pagamento confirmado',
+          description: 'Sua assinatura foi ativada com sucesso!',
+          variant: 'default',
+        });
+        
+        if (onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+          }, 1500);
+        }
+      }
+    } catch (err: any) {
+      console.error('Erro ao processar pagamento:', err);
+      setPaymentError(err.message || 'Erro ao processar o pagamento');
+      toast({
+        title: 'Erro no processamento',
+        description: err.message || 'Ocorreu um erro ao processar seu pagamento',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
-  
-  const CARD_ELEMENT_OPTIONS = {
-    style: {
-      base: {
-        color: '#32325d',
-        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-        fontSmoothing: 'antialiased',
-        fontSize: '16px',
-        '::placeholder': {
-          color: '#aab7c4',
-        },
-      },
-      invalid: {
-        color: '#fa755a',
-        iconColor: '#fa755a',
-      },
-    },
-  };
-  
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md mx-auto">
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>
+          {paymentSuccess ? 'Pagamento Concluído' : 'Finalizar Assinatura'}
+        </CardTitle>
+        <CardDescription>
+          {paymentSuccess 
+            ? 'Sua assinatura foi ativada com sucesso!' 
+            : 'Complete seus dados de pagamento para ativar sua assinatura'}
+        </CardDescription>
+      </CardHeader>
       
-      {message && (
-        <Alert variant="default" className="bg-green-50 text-green-800 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle>Sucesso</AlertTitle>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="rounded-md border p-4 bg-card">
-        <PaymentElement id="payment-element" />
-      </div>
-      
-      <Button 
-        className="w-full mt-4" 
-        disabled={isLoading || !stripe || !elements || isComplete} 
-        type="submit"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processando...
-          </>
-        ) : isComplete ? (
-          <>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Pagamento Concluído
-          </>
+      <CardContent>
+        {paymentSuccess ? (
+          <div className="py-6 flex flex-col items-center justify-center text-center">
+            <CheckCircle className="h-16 w-16 text-primary mb-4" />
+            <p className="text-lg font-medium mb-2">Pagamento processado com sucesso!</p>
+            <p className="text-sm text-muted-foreground">
+              Sua assinatura está ativa e você já pode acessar todos os recursos do plano.
+            </p>
+          </div>
         ) : (
-          'Finalizar Pagamento'
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-muted p-4 rounded-md border">
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-medium">Dados do Cartão</h3>
+              </div>
+              
+              <div className="p-3 bg-background rounded border">
+                <CardElement 
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#424770',
+                        '::placeholder': {
+                          color: '#aab7c4',
+                        },
+                      },
+                      invalid: {
+                        color: '#9e2146',
+                      },
+                    },
+                  }}
+                />
+              </div>
+              
+              {paymentError && (
+                <div className="mt-3 text-sm text-destructive">
+                  {paymentError}
+                </div>
+              )}
+              
+              <div className="flex items-center gap-1 mt-4 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" />
+                <span>Seus dados são criptografados com segurança</span>
+              </div>
+            </div>
+          </form>
         )}
-      </Button>
-    </form>
+      </CardContent>
+      
+      <CardFooter className="flex flex-col sm:flex-row gap-3">
+        {paymentSuccess ? (
+          <Button 
+            onClick={onSuccess} 
+            className="w-full sm:w-auto"
+            variant="default"
+          >
+            Continuar
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={onCancel}
+              variant="outline"
+              disabled={isProcessing}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            
+            <Button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={!stripe || isProcessing}
+              className="w-full sm:w-auto"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                'Confirmar Pagamento'
+              )}
+            </Button>
+          </>
+        )}
+      </CardFooter>
+    </Card>
   );
 }

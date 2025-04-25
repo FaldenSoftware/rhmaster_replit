@@ -1,584 +1,602 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CreditCard, FileText, Loader2, RefreshCcw, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SubscriptionPlans } from './subscription-plans';
-import { cn } from '@/lib/utils';
+import { SubscriptionPlans, PLAN_IDS } from './subscription-plans';
+import { SubscriptionFormContainer } from './subscription-form';
+import { Button } from '@/components/ui/button';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
+import { Loader2, AlertCircle, CreditCard, Calendar, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 
-interface SubscriptionData {
+// Tipos para as informações de assinatura
+type SubscriptionInfo = {
   id: number;
   plan: 'basic' | 'pro' | 'enterprise';
-  status: 'active' | 'inactive' | 'trial' | 'canceled' | 'expired';
+  status: 'active' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'canceled' | 'unpaid';
   maxClients: number;
   clientCount: number;
   startDate: string;
   endDate?: string;
   autoRenew: boolean;
-  daysRemaining: number;
-  cancelAtPeriodEnd: boolean;
+  daysRemaining?: number;
+  cancelAtPeriodEnd?: boolean;
   currentPeriodEnd?: string;
-}
+};
 
-interface InvoiceData {
-  id: string;
-  number: string;
-  status: string;
-  amountDue: number;
-  amountPaid: number;
-  currency: string;
-  created: string;
-  dueDate: string | null;
-  periodStart: string;
-  periodEnd: string;
-  receiptUrl: string | null;
-  pdf: string | null;
-}
+// Status de assinatura para exibição
+const StatusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  active: { label: 'Ativa', variant: 'default' },
+  incomplete: { label: 'Incompleta', variant: 'outline' },
+  incomplete_expired: { label: 'Expirada', variant: 'destructive' },
+  past_due: { label: 'Pagamento Pendente', variant: 'destructive' },
+  canceled: { label: 'Cancelada', variant: 'secondary' },
+  unpaid: { label: 'Não Paga', variant: 'destructive' },
+};
 
+// Componente principal para gerenciamento de assinaturas
 export function SubscriptionManagement() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCanceling, setIsCanceling] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
-  const [isInvoicesLoading, setIsInvoicesLoading] = useState(false);
+  const queryClient = useQueryClient();
+  
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [cancelImmediate, setCancelImmediate] = useState(false);
+  const [cancelImmediately, setCancelImmediately] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-  // Carregar dados da assinatura
-  useEffect(() => {
-    fetchSubscriptionData();
-  }, []);
+  // Busca a assinatura atual
+  const { 
+    data: subscription, 
+    isLoading, 
+    error 
+  } = useQuery<SubscriptionInfo>({
+    queryKey: ['/api/subscription/current-subscription'],
+    enabled: !!user && user.role === 'mentor',
+  });
 
-  // Verificar se existe um parâmetro de sucesso na URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('subscription_success') === 'true') {
-      toast({
-        title: 'Assinatura processada com sucesso!',
-        description: 'Seu plano foi ativado.',
-      });
-      
-      // Limpar o parâmetro da URL sem recarregar a página
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-      
-      // Recarregar os dados da assinatura
-      fetchSubscriptionData();
-    }
-  }, [toast]);
-
-  const fetchSubscriptionData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiRequest('GET', '/api/subscription/current-subscription');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSubscription(data);
-        
-        // Carregar faturas após obter assinatura
-        fetchInvoices();
-      } else {
-        // Se for 404, é porque não tem assinatura ainda
-        if (response.status === 404) {
-          setSubscription(null);
-        } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Erro ao buscar dados da assinatura');
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Erro ao carregar assinatura',
-        description: error.message || 'Ocorreu um erro ao buscar dados da sua assinatura',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchInvoices = async () => {
-    try {
-      setIsInvoicesLoading(true);
-      const response = await apiRequest('GET', '/api/subscription/invoices');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setInvoices(data);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao buscar faturas');
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Erro ao carregar faturas',
-        description: error.message || 'Ocorreu um erro ao buscar suas faturas',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsInvoicesLoading(false);
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    try {
-      setIsCanceling(true);
+  // Mutação para cancelar a assinatura
+  const cancelMutation = useMutation({
+    mutationFn: async ({ reason, cancelImmediate }: { reason: string, cancelImmediate: boolean }) => {
       const response = await apiRequest('POST', '/api/subscription/cancel-subscription', {
-        reason: cancelReason,
-        cancelImmediate
+        reason,
+        cancelImmediate,
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        toast({
-          title: 'Assinatura cancelada',
-          description: data.message || 'Sua solicitação de cancelamento foi processada com sucesso',
-        });
-        
-        // Recarregar os dados da assinatura
-        fetchSubscriptionData();
-        setShowCancelDialog(false);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao cancelar assinatura');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao cancelar assinatura');
       }
-    } catch (error: any) {
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Assinatura cancelada',
+        description: cancelImmediately 
+          ? 'Sua assinatura foi cancelada com sucesso' 
+          : 'Sua assinatura será cancelada ao final do período atual',
+        variant: 'default',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription/current-subscription'] });
+      setShowCancelDialog(false);
+      setCancelReason('');
+      setCancelImmediately(false);
+    },
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao cancelar assinatura',
-        description: error.message || 'Ocorreu um erro ao processar sua solicitação',
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
-      setIsCanceling(false);
-    }
-  };
-
-  const handleReactivateSubscription = async () => {
-    try {
-      setIsReactivating(true);
+    },
+  });
+  
+  // Mutação para reativar uma assinatura cancelada
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
       const response = await apiRequest('POST', '/api/subscription/reactivate-subscription');
       
-      if (response.ok) {
-        const data = await response.json();
-        toast({
-          title: 'Assinatura reativada',
-          description: data.message || 'Sua assinatura foi reativada com sucesso',
-        });
-        
-        // Recarregar os dados da assinatura
-        fetchSubscriptionData();
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao reativar assinatura');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao reativar assinatura');
       }
-    } catch (error: any) {
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Assinatura reativada',
+        description: 'Sua assinatura foi reativada com sucesso',
+        variant: 'default',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription/current-subscription'] });
+    },
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao reativar assinatura',
-        description: error.message || 'Ocorreu um erro ao processar sua solicitação',
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
-      setIsReactivating(false);
-    }
-  };
+    },
+  });
 
-  // Mapear o status para uma cor e texto mais amigável
-  const getStatusDetails = (status: string, cancelAtPeriodEnd: boolean) => {
-    if (cancelAtPeriodEnd) {
-      return {
-        label: 'Cancelamento Agendado',
-        color: 'bg-amber-500',
-        description: 'A assinatura será cancelada ao final do período atual',
-      };
-    }
+  // Manipuladores de eventos
+  const handlePlanSelection = (planId: string) => {
+    setSelectedPlan(planId);
+    setShowPaymentForm(true);
+  };
+  
+  const handleCancelSubscription = () => {
+    cancelMutation.mutate({ 
+      reason: cancelReason, 
+      cancelImmediate: cancelImmediately 
+    });
+  };
+  
+  const handleReactivateSubscription = () => {
+    reactivateMutation.mutate();
+  };
+  
+  const handleUpgradeSuccess = () => {
+    setShowPaymentForm(false);
+    setShowUpgradeDialog(false);
+    setSelectedPlan(null);
     
-    switch (status) {
-      case 'active':
-        return {
-          label: 'Ativa',
-          color: 'bg-green-500',
-          description: 'Sua assinatura está ativa e será renovada automaticamente',
-        };
-      case 'trial':
-        return {
-          label: 'Período de Teste',
-          color: 'bg-blue-500',
-          description: 'Você está no período de teste gratuito',
-        };
-      case 'canceled':
-        return {
-          label: 'Cancelada',
-          color: 'bg-red-500',
-          description: 'Sua assinatura foi cancelada',
-        };
-      case 'inactive':
-        return {
-          label: 'Inativa',
-          color: 'bg-gray-500',
-          description: 'Sua assinatura está temporariamente inativa',
-        };
-      case 'expired':
-        return {
-          label: 'Expirada',
-          color: 'bg-gray-500',
-          description: 'Sua assinatura expirou',
-        };
-      default:
-        return {
-          label: 'Desconhecido',
-          color: 'bg-gray-500',
-          description: 'Status desconhecido',
-        };
-    }
+    toast({
+      title: 'Assinatura atualizada',
+      description: 'Seu plano foi atualizado com sucesso',
+      variant: 'default',
+    });
+    
+    queryClient.invalidateQueries({ queryKey: ['/api/subscription/current-subscription'] });
   };
 
-  // Formatar nomes dos planos
-  const getPlanName = (plan: string) => {
-    switch (plan) {
-      case 'basic': return 'Básico';
-      case 'pro': return 'Profissional';
-      case 'enterprise': return 'Enterprise';
-      default: return plan;
-    }
-  };
-
-  // Função para formatar data
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(date);
-  };
-
-  // Função para formatar valor monetário
-  const formatCurrency = (amount: number, currency: string = 'BRL') => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency,
-    }).format(amount);
-  };
-
+  // Exibe carregamento
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
+  // Exibe mensagem de erro
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Erro</AlertTitle>
+        <AlertDescription>
+          Não foi possível carregar as informações da assinatura. 
+          {(error as Error).message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Se o usuário ainda não tem uma assinatura, mostra a seleção de planos
   if (!subscription) {
     return (
-      <Card className="mb-8">
+      <Card>
         <CardHeader>
           <CardTitle>Assinatura</CardTitle>
-          <CardDescription>Você ainda não possui uma assinatura ativa</CardDescription>
+          <CardDescription>
+            Você ainda não possui uma assinatura ativa. Selecione um plano para começar.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert variant="default" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Sem assinatura ativa</AlertTitle>
-            <AlertDescription>
-              Para acessar todos os recursos da plataforma, você precisa escolher um plano de assinatura.
-            </AlertDescription>
-          </Alert>
+          {showPaymentForm ? (
+            <SubscriptionFormContainer
+              planId={selectedPlan || PLAN_IDS.BASIC}
+              onSuccess={handleUpgradeSuccess}
+              onCancel={() => setShowPaymentForm(false)}
+            />
+          ) : (
+            <SubscriptionPlans
+              onSelectPlan={handlePlanSelection}
+              initialSelectedPlan={PLAN_IDS.BASIC}
+              autoRotate={true}
+            />
+          )}
         </CardContent>
-        <CardFooter>
-          <Button onClick={() => setShowUpgradeDialog(true)}>
-            Escolher um Plano
-          </Button>
-        </CardFooter>
       </Card>
     );
   }
 
-  const statusDetails = getStatusDetails(subscription.status, subscription.cancelAtPeriodEnd);
-  const usagePercentage = (subscription.clientCount / subscription.maxClients) * 100;
+  // Determina se a assinatura está cancelada
+  const isCanceled = subscription.status === 'canceled' || subscription.cancelAtPeriodEnd;
+  
+  // Determina se a assinatura pode ser alterada/atualizada
+  const canUpgrade = subscription.status === 'active' && !subscription.cancelAtPeriodEnd;
+  
+  // Determina se a assinatura pode ser reativada
+  const canReactivate = subscription.status === 'active' && subscription.cancelAtPeriodEnd;
 
   return (
-    <div className="space-y-8">
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-            <div>
-              <CardTitle>Assinatura</CardTitle>
-              <CardDescription>Gerenciar sua assinatura atual</CardDescription>
-            </div>
-            <Badge className={cn("mt-2 sm:mt-0", statusDetails.color)}>
-              {statusDetails.label}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Plano Atual</h3>
-              <p className="text-xl font-bold">{getPlanName(subscription.plan)}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-              <p className="text-sm">{statusDetails.description}</p>
-            </div>
-            
-            {subscription.status === 'trial' && (
-              <div className="space-y-2 md:col-span-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Período de Teste</h3>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>Dias restantes: {subscription.daysRemaining}</span>
-                    <span>{subscription.daysRemaining} de 7 dias</span>
-                  </div>
-                  <Progress value={(subscription.daysRemaining / 7) * 100} className="h-2" />
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Uso de Clientes</h3>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Clientes ativos</span>
-                  <span>{subscription.clientCount} de {subscription.maxClients}</span>
-                </div>
-                <Progress value={usagePercentage} className="h-2" />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Próxima Cobrança</h3>
-              <p className="text-sm">
-                {subscription.cancelAtPeriodEnd
-                  ? 'Nenhuma cobrança futura'
-                  : formatDate(subscription.currentPeriodEnd)}
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Início da Assinatura</h3>
-              <p className="text-sm">{formatDate(subscription.startDate)}</p>
-            </div>
-            
-            {subscription.endDate && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Término da Assinatura</h3>
-                <p className="text-sm">{formatDate(subscription.endDate)}</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row gap-2">
-          {subscription.status === 'active' && !subscription.cancelAtPeriodEnd && (
-            <>
-              <Button variant="outline" onClick={() => setShowUpgradeDialog(true)}>
-                Alterar Plano
-              </Button>
-              <Button variant="outline" onClick={() => setShowCancelDialog(true)}>
-                Cancelar Assinatura
-              </Button>
-            </>
-          )}
-          
-          {subscription.cancelAtPeriodEnd && (
-            <Button 
-              variant="outline" 
-              onClick={handleReactivateSubscription}
-              disabled={isReactivating}
-            >
-              {isReactivating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Reativando...
-                </>
-              ) : (
-                <>
-                  <RefreshCcw className="mr-2 h-4 w-4" />
-                  Reativar Assinatura
-                </>
-              )}
-            </Button>
-          )}
-          
-          {['canceled', 'expired', 'inactive'].includes(subscription.status) && (
-            <Button onClick={() => setShowUpgradeDialog(true)}>
-              Assinar Novamente
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+    <Tabs defaultValue="details">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="details">Detalhes</TabsTrigger>
+        <TabsTrigger value="billing">Faturas</TabsTrigger>
+      </TabsList>
       
-      {/* Seção de faturas */}
+      <TabsContent value="details">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <CardTitle>Assinatura</CardTitle>
+                <CardDescription>
+                  Detalhes da sua assinatura atual
+                </CardDescription>
+              </div>
+              <Badge 
+                variant={
+                  StatusLabels[subscription.status]?.variant || 'outline'
+                }
+              >
+                {StatusLabels[subscription.status]?.label || subscription.status}
+                {subscription.cancelAtPeriodEnd && ' (Cancelamento Agendado)'}
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Plano</h3>
+                <p className="text-lg font-semibold">
+                  {subscription.plan === 'basic' && 'Básico'}
+                  {subscription.plan === 'pro' && 'Profissional'}
+                  {subscription.plan === 'enterprise' && 'Empresarial'}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Clientes</h3>
+                <p className="text-lg font-semibold">
+                  {subscription.clientCount} / {subscription.maxClients}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    Data de Início
+                  </span>
+                </h3>
+                <p className="font-medium">
+                  {new Date(subscription.startDate).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {subscription.cancelAtPeriodEnd ? 'Termina em' : 'Próxima cobrança'}
+                  </span>
+                </h3>
+                <p className="font-medium">
+                  {subscription.currentPeriodEnd 
+                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') 
+                    : subscription.endDate 
+                      ? new Date(subscription.endDate).toLocaleDateString('pt-BR')
+                      : 'Não disponível'}
+                  
+                  {subscription.daysRemaining !== undefined && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      ({subscription.daysRemaining} dias restantes)
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            
+            {isCanceled && (
+              <Alert variant="default" className="bg-muted">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Cancelamento Agendado</AlertTitle>
+                <AlertDescription>
+                  Sua assinatura está agendada para cancelamento 
+                  {subscription.currentPeriodEnd 
+                    ? ` em ${new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}`
+                    : ''}. 
+                  {canReactivate && 'Você pode reativar sua assinatura até esta data.'}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+          
+          <CardFooter className="flex flex-col sm:flex-row gap-2">
+            {!isCanceled ? (
+              <>
+                <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Cancelar Assinatura</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cancelar Assinatura</DialogTitle>
+                      <DialogDescription>
+                        Você tem certeza que deseja cancelar sua assinatura? 
+                        Informe um motivo que nos ajude a melhorar.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <Textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Por que você está cancelando? (opcional)"
+                        className="resize-none"
+                      />
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="cancelImmediately"
+                          checked={cancelImmediately}
+                          onChange={(e) => setCancelImmediately(e.target.checked)}
+                          className="form-checkbox h-4 w-4 text-primary focus:ring-primary"
+                        />
+                        <label 
+                          htmlFor="cancelImmediately" 
+                          className="text-sm font-medium text-muted-foreground"
+                        >
+                          Cancelar imediatamente 
+                          <span className="text-xs ml-1 text-destructive">
+                            (Perderá acesso agora)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowCancelDialog(false)}
+                      >
+                        Voltar
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleCancelSubscription}
+                        disabled={cancelMutation.isPending}
+                      >
+                        {cancelMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                            Processando...
+                          </>
+                        ) : (
+                          'Confirmar Cancelamento'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                
+                {canUpgrade && (
+                  <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+                    <DialogTrigger asChild>
+                      <Button>Alterar Plano</Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl">
+                      <DialogHeader>
+                        <DialogTitle>Alterar Plano</DialogTitle>
+                        <DialogDescription>
+                          Selecione o plano para o qual deseja atualizar
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <ScrollArea className="max-h-[70vh]">
+                        <div className="py-4">
+                          {showPaymentForm ? (
+                            <SubscriptionFormContainer
+                              planId={selectedPlan || subscription.plan}
+                              onSuccess={handleUpgradeSuccess}
+                              onCancel={() => setShowPaymentForm(false)}
+                            />
+                          ) : (
+                            <SubscriptionPlans
+                              onSelectPlan={handlePlanSelection}
+                              initialSelectedPlan={subscription.plan}
+                              highlightCurrentPlan={true}
+                            />
+                          )}
+                        </div>
+                      </ScrollArea>
+                      
+                      {!showPaymentForm && (
+                        <DialogFooter>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowUpgradeDialog(false)}
+                          >
+                            Cancelar
+                          </Button>
+                        </DialogFooter>
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </>
+            ) : (
+              canReactivate && (
+                <Button 
+                  variant="default"
+                  onClick={handleReactivateSubscription}
+                  disabled={reactivateMutation.isPending}
+                >
+                  {reactivateMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" /> 
+                      Reativar Assinatura
+                    </>
+                  )}
+                </Button>
+              )
+            )}
+          </CardFooter>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="billing">
+        <InvoiceList />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+// Componente para listar as faturas
+function InvoiceList() {
+  const { user } = useAuth();
+  
+  // Busca as faturas do usuário
+  const { 
+    data: invoices, 
+    isLoading 
+  } = useQuery({
+    queryKey: ['/api/subscription/invoices'],
+    enabled: !!user && user.role === 'mentor',
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!invoices || invoices.length === 0) {
+    return (
       <Card>
         <CardHeader>
           <CardTitle>Histórico de Faturas</CardTitle>
-          <CardDescription>Visualize suas faturas anteriores</CardDescription>
+          <CardDescription>
+            Seu histórico de pagamentos
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isInvoicesLoading ? (
-            <div className="flex justify-center p-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : invoices.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              Nenhuma fatura encontrada
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground">
+              Nenhuma fatura disponível
             </p>
-          ) : (
-            <div className="space-y-4">
-              {invoices.map((invoice) => (
-                <div 
-                  key={invoice.id} 
-                  className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-md"
-                >
-                  <div className="space-y-1 mb-2 sm:mb-0">
-                    <p className="font-medium">Fatura #{invoice.number}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(invoice.created)} - {formatCurrency(invoice.amountPaid, invoice.currency)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <Badge
-                      className={cn(
-                        invoice.status === 'paid' ? 'bg-green-500' : 
-                        invoice.status === 'open' ? 'bg-blue-500' : 'bg-red-500'
-                      )}
-                    >
-                      {invoice.status === 'paid' ? 'Pago' : invoice.status === 'open' ? 'Em aberto' : 'Falha'}
-                    </Badge>
-                    
-                    <div className="flex gap-2 ml-auto">
-                      {invoice.receiptUrl && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={invoice.receiptUrl} target="_blank" rel="noopener noreferrer">
-                            <CreditCard className="h-4 w-4 mr-1" />
-                            Recibo
-                          </a>
-                        </Button>
-                      )}
-                      
-                      {invoice.pdf && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={invoice.pdf} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-4 w-4 mr-1" />
-                            PDF
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
-      
-      {/* Dialog para upgrade/alteração de plano */}
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="max-w-6xl">
-          <DialogHeader>
-            <DialogTitle>
-              {subscription && subscription.status === 'active' ? 'Alterar Plano' : 'Escolher um Plano'}
-            </DialogTitle>
-            <DialogDescription>
-              {subscription && subscription.status === 'active'
-                ? 'Escolha um novo plano para sua assinatura. Você será cobrado proporcionalmente pela diferença.'
-                : 'Escolha um plano que melhor atenda às suas necessidades.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <SubscriptionPlans 
-              currentPlan={subscription?.plan} 
-              isUpgrade={true}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog para cancelamento */}
-      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancelar Assinatura</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja cancelar sua assinatura? 
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Motivo do cancelamento (opcional)
-              </label>
-              <textarea
-                className="w-full p-2 border rounded-md"
-                rows={3}
-                placeholder="Conte-nos por que está cancelando..."
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="cancel-immediate"
-                checked={cancelImmediate}
-                onChange={(e) => setCancelImmediate(e.target.checked)}
-              />
-              <label htmlFor="cancel-immediate" className="text-sm">
-                Cancelar imediatamente (sem reembolso do período atual)
-              </label>
-            </div>
-            
-            <Alert variant="default" className="bg-amber-50 text-amber-800 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertTitle>Atenção</AlertTitle>
-              <AlertDescription>
-                {cancelImmediate
-                  ? "Sua assinatura será cancelada imediatamente e você perderá o acesso aos recursos premium. Não haverá reembolso pelo período atual já pago."
-                  : "Sua assinatura continuará ativa até o final do período atual. Após isso, você perderá o acesso aos recursos premium."}
-              </AlertDescription>
-            </Alert>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowCancelDialog(false)}
-            >
-              Voltar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleCancelSubscription}
-              disabled={isCanceling}
-            >
-              {isCanceling ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Confirmar Cancelamento'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Histórico de Faturas</CardTitle>
+        <CardDescription>
+          Seu histórico de pagamentos e faturas
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b">
+              <tr className="bg-muted/50">
+                <th className="px-4 py-2 text-left font-medium">Nº</th>
+                <th className="px-4 py-2 text-left font-medium">Data</th>
+                <th className="px-4 py-2 text-left font-medium">Valor</th>
+                <th className="px-4 py-2 text-left font-medium">Status</th>
+                <th className="px-4 py-2 text-left font-medium">Período</th>
+                <th className="px-4 py-2 text-right font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((invoice: any) => (
+                <tr key={invoice.id} className="border-b hover:bg-muted/50">
+                  <td className="px-4 py-3">{invoice.number}</td>
+                  <td className="px-4 py-3">
+                    {new Date(invoice.created).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-4 py-3">
+                    {invoice.amountPaid
+                      ? `R$${invoice.amountPaid.toFixed(2)}` 
+                      : `R$${invoice.amountDue.toFixed(2)}`}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={
+                      invoice.status === 'paid' ? 'default' : 
+                      invoice.status === 'open' ? 'outline' : 'destructive'
+                    }>
+                      {invoice.status === 'paid' ? 'Pago' : 
+                       invoice.status === 'open' ? 'Pendente' : 'Falha'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs">
+                      {new Date(invoice.periodStart).toLocaleDateString('pt-BR')} - {' '}
+                      {new Date(invoice.periodEnd).toLocaleDateString('pt-BR')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {invoice.receiptUrl && (
+                      <a 
+                        href={invoice.receiptUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <CreditCard className="h-3 w-3" />
+                        <span>Recibo</span>
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

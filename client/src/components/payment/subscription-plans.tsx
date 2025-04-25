@@ -1,262 +1,161 @@
-import { useState, useEffect, useCallback } from 'react';
-import { PlanCard } from './plan-card';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useQuery } from '@tanstack/react-query';
+import { PlanCard, PlanFeature } from './plan-card';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { StripeElementsProvider } from '@/lib/stripe-context';
-import { SubscriptionForm } from './subscription-form';
+import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-interface Plan {
-  id: 'basic' | 'pro' | 'enterprise';
-  title: string;
-  price: number;
-  description: string;
-  features: Array<{ text: string; included: boolean }>;
-  isRecommended?: boolean;
-}
+// Tipos de plano disponíveis
+export const PLAN_IDS = {
+  BASIC: 'basic',
+  PRO: 'pro',
+  ENTERPRISE: 'enterprise',
+} as const;
 
-interface SubscriptionPlansProps {
-  currentPlan?: string;
-  isUpgrade?: boolean;
-}
+// Informações sobre os planos disponíveis
+const PLANS = {
+  [PLAN_IDS.BASIC]: {
+    id: PLAN_IDS.BASIC,
+    name: 'Básico',
+    description: 'Para mentores individuais iniciando',
+    price: 39.90,
+    maxClients: 10,
+    features: [
+      { name: 'Até 10 clientes', included: true },
+      { name: 'Acesso a testes comportamentais', included: true },
+      { name: 'Dashboard básico', included: true },
+      { name: 'Assistente IA para mentor', included: true },
+      { name: 'Suporte por email', included: true },
+      { name: 'Testes avançados', included: false },
+      { name: 'Relatórios personalizados', included: false },
+      { name: 'Suporte prioritário', included: false },
+    ],
+  },
+  [PLAN_IDS.PRO]: {
+    id: PLAN_IDS.PRO,
+    name: 'Profissional',
+    description: 'Para mentores com carteira de clientes',
+    price: 89.90,
+    maxClients: 30,
+    features: [
+      { name: 'Até 30 clientes', included: true },
+      { name: 'Acesso a testes comportamentais', included: true },
+      { name: 'Dashboard avançado', included: true },
+      { name: 'Assistente IA para mentor e clientes', included: true },
+      { name: 'Suporte prioritário', included: true },
+      { name: 'Testes avançados', included: true },
+      { name: 'Relatórios personalizados', included: true },
+      { name: 'API de integração', included: false },
+    ],
+  },
+  [PLAN_IDS.ENTERPRISE]: {
+    id: PLAN_IDS.ENTERPRISE,
+    name: 'Empresarial',
+    description: 'Para equipes e grandes organizações',
+    price: 199.90,
+    maxClients: 100,
+    features: [
+      { name: 'Até 100 clientes', included: true },
+      { name: 'Acesso a testes comportamentais', included: true },
+      { name: 'Dashboard personalizado', included: true },
+      { name: 'Assistente IA premium', included: true },
+      { name: 'Suporte dedicado', included: true },
+      { name: 'Testes avançados e personalizados', included: true },
+      { name: 'Relatórios analíticos completos', included: true },
+      { name: 'API de integração', included: true },
+    ],
+  },
+};
 
-export function SubscriptionPlans({ 
-  currentPlan,
-  isUpgrade = false
+type SubscriptionPlansProps = {
+  onSelectPlan: (planId: string) => void;
+  initialSelectedPlan?: string;
+  highlightCurrentPlan?: boolean;
+  autoRotate?: boolean;
+};
+
+export function SubscriptionPlans({
+  onSelectPlan,
+  initialSelectedPlan,
+  highlightCurrentPlan = false,
+  autoRotate = false
 }: SubscriptionPlansProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [autoRotateInterval, setAutoRotateInterval] = useState<NodeJS.Timeout | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>(initialSelectedPlan);
+  const [autoRotateIndex, setAutoRotateIndex] = useState(0);
 
-  // Preços mensais
-  const monthlyPrices = {
-    basic: 49.90,
-    pro: 99.90,
-    enterprise: 199.90
-  };
+  // Obter a assinatura atual do usuário
+  const { data: currentSubscription, isLoading } = useQuery({
+    queryKey: ['/api/subscription/current-subscription'],
+    enabled: !!user && highlightCurrentPlan && user.role === 'mentor',
+  });
 
-  // Preços anuais (com desconto)
-  const yearlyPrices = {
-    basic: 39.90,
-    pro: 79.90,
-    enterprise: 159.90
-  };
-
-  // Definições dos planos
-  const plans: Plan[] = [
-    {
-      id: 'basic',
-      title: 'Básico',
-      price: billingCycle === 'monthly' ? monthlyPrices.basic : yearlyPrices.basic,
-      description: 'Ideal para mentores iniciantes',
-      features: [
-        { text: 'Até 5 clientes', included: true },
-        { text: 'Testes de comportamento', included: true },
-        { text: 'Dashboard básico', included: true },
-        { text: 'Relatórios simplificados', included: true },
-        { text: 'Suporte por e-mail', included: true },
-        { text: 'Assistente de IA', included: false },
-        { text: 'Testes personalizados', included: false },
-        { text: 'Acompanhamento avançado', included: false },
-      ],
-    },
-    {
-      id: 'pro',
-      title: 'Profissional',
-      price: billingCycle === 'monthly' ? monthlyPrices.pro : yearlyPrices.pro,
-      description: 'Para mentores em crescimento',
-      features: [
-        { text: 'Até 20 clientes', included: true },
-        { text: 'Todos os testes disponíveis', included: true },
-        { text: 'Dashboard completo', included: true },
-        { text: 'Relatórios detalhados', included: true },
-        { text: 'Suporte prioritário', included: true },
-        { text: 'Assistente de IA', included: true },
-        { text: 'Testes personalizados', included: false },
-        { text: 'Acompanhamento avançado', included: false },
-      ],
-      isRecommended: true,
-    },
-    {
-      id: 'enterprise',
-      title: 'Enterprise',
-      price: billingCycle === 'monthly' ? monthlyPrices.enterprise : yearlyPrices.enterprise,
-      description: 'Para mentores profissionais',
-      features: [
-        { text: 'Até 50 clientes', included: true },
-        { text: 'Todos os testes disponíveis', included: true },
-        { text: 'Dashboard personalizado', included: true },
-        { text: 'Relatórios avançados', included: true },
-        { text: 'Suporte dedicado', included: true },
-        { text: 'Assistente de IA avançado', included: true },
-        { text: 'Testes personalizados', included: true },
-        { text: 'Acompanhamento avançado', included: true },
-      ],
-    },
-  ];
-
-  // Atualizar o plano selecionado se o currentPlan mudar
+  // Efeito para rotação automática dos planos
   useEffect(() => {
-    if (currentPlan) {
-      setSelectedPlanId(currentPlan);
-    }
-  }, [currentPlan]);
+    if (!autoRotate) return;
+    
+    const planIds = Object.keys(PLANS);
+    const interval = setInterval(() => {
+      setAutoRotateIndex((prev) => (prev + 1) % planIds.length);
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [autoRotate]);
 
-  // Rotação automática a cada 3 segundos para o carrossel de planos
   useEffect(() => {
-    // Só ativa a rotação automática se não estiver na página de upgrade
-    if (!isUpgrade) {
-      const interval = setInterval(() => {
-        setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly');
-      }, 3000); // 3 segundos para alternar
-
-      setAutoRotateInterval(interval);
-
-      return () => {
-        if (autoRotateInterval) {
-          clearInterval(autoRotateInterval);
-        }
-      };
+    if (autoRotate) {
+      const planIds = Object.keys(PLANS);
+      setSelectedPlan(planIds[autoRotateIndex]);
     }
-  }, [isUpgrade]);
+  }, [autoRotateIndex, autoRotate]);
 
-  // Parar a rotação automática ao interagir com os tabs
-  const handleTabChange = (value: string) => {
-    if (autoRotateInterval) {
-      clearInterval(autoRotateInterval);
-      setAutoRotateInterval(null);
-    }
-    setBillingCycle(value as 'monthly' | 'yearly');
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlan(planId);
+    onSelectPlan(planId);
   };
 
-  const handleSubscribe = useCallback(async (planId: string) => {
-    try {
-      setIsLoading(true);
-      setSelectedPlanId(planId);
-
-      // Endpoint diferente para upgrade vs nova assinatura
-      const endpoint = isUpgrade
-        ? '/api/subscription/update-subscription'
-        : '/api/subscription/create-subscription';
-
-      const response = await apiRequest('POST', endpoint, { planId });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao processar a assinatura');
-      }
-      
-      const data = await response.json();
-      
-      if (data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setIsDialogOpen(true);
-      } else if (data.success) {
-        // Caso a assinatura seja atualizada sem exigir um novo pagamento
-        toast({
-          title: 'Plano atualizado com sucesso!',
-          description: `Seu plano foi alterado para ${planId.charAt(0).toUpperCase() + planId.slice(1)}`,
-        });
-        
-        // Redirecionar ou atualizar a interface do usuário conforme necessário
-        setTimeout(() => {
-          window.location.href = '/mentor-dashboard/settings?subscription_success=true';
-        }, 2000);
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Erro na assinatura',
-        description: error.message || 'Ocorreu um erro ao processar a assinatura',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isUpgrade, toast]);
-
-  const handlePaymentSuccess = useCallback(() => {
-    toast({
-      title: 'Pagamento processado com sucesso!',
-      description: 'Sua assinatura foi ativada.',
-    });
-    
-    setIsDialogOpen(false);
-    
-    // Redirecionar para o dashboard após alguns segundos
-    setTimeout(() => {
-      window.location.href = '/mentor-dashboard/settings?subscription_success=true';
-    }, 2000);
-  }, [toast]);
-
-  const handlePaymentError = useCallback((error: Error) => {
-    toast({
-      title: 'Erro no pagamento',
-      description: error.message || 'Ocorreu um erro ao processar o pagamento',
-      variant: 'destructive',
-    });
-  }, [toast]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full">
-      <div className="mx-auto mb-8 text-center">
-        <Tabs 
-          value={billingCycle} 
-          onValueChange={handleTabChange}
-          className="inline-flex"
-        >
-          <TabsList>
-            <TabsTrigger value="monthly">Mensal</TabsTrigger>
-            <TabsTrigger value="yearly">
-              Anual <span className="ml-1 text-xs text-emerald-600 font-semibold">-20%</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-4">
-        {plans.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            id={plan.id}
-            title={plan.title}
-            price={plan.price}
-            description={plan.description}
-            features={plan.features}
-            isRecommended={plan.isRecommended}
-            isLoading={isLoading && selectedPlanId === plan.id}
-            isUserCurrentPlan={currentPlan === plan.id}
-            onSubscribe={handleSubscribe}
-          />
-        ))}
-      </div>
-
-      {/* Modal de pagamento */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Concluir Assinatura</DialogTitle>
-            <DialogDescription>
-              Insira os dados do seu cartão para {isUpgrade ? 'atualizar' : 'ativar'} sua assinatura.
-            </DialogDescription>
-          </DialogHeader>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      {Object.values(PLANS).map((plan, index) => {
+        const isCurrent = 
+          highlightCurrentPlan && 
+          currentSubscription?.plan === plan.id;
+        
+        const isSelected = 
+          selectedPlan === plan.id;
           
-          {clientSecret && selectedPlanId && (
-            <StripeElementsProvider clientSecret={clientSecret}>
-              <SubscriptionForm 
-                clientSecret={clientSecret} 
-                planId={selectedPlanId}
-                onSuccess={handlePaymentSuccess}
-                onError={handlePaymentError}
-              />
-            </StripeElementsProvider>
-          )}
-        </DialogContent>
-      </Dialog>
+        return (
+          <motion.div
+            key={plan.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            whileHover={{ scale: 1.02 }}
+          >
+            <PlanCard
+              id={plan.id}
+              name={plan.name}
+              description={plan.description}
+              price={plan.price}
+              features={plan.features}
+              popular={plan.id === PLAN_IDS.PRO}
+              current={isCurrent}
+              onSelect={handleSelectPlan}
+              disabled={isCurrent}
+            />
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

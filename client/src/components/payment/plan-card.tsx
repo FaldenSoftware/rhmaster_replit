@@ -1,123 +1,93 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-interface PlanFeature {
-  text: string;
+export type PlanFeature = {
+  name: string;
   included: boolean;
-}
+};
 
-export interface PlanCardProps {
-  id: 'basic' | 'pro' | 'enterprise';
-  title: string;
-  price: number;
+export type PlanProps = {
+  id: string;
+  name: string;
   description: string;
+  price: number;
   features: PlanFeature[];
-  isRecommended?: boolean;
-  isLoading?: boolean;
-  isUserCurrentPlan?: boolean;
-  onSubscribe: (planId: string) => void;
-}
+  popular?: boolean;
+  current?: boolean;
+  onSelect: (id: string) => void;
+  disabled?: boolean;
+};
 
-export function PlanCard({
-  id,
-  title,
-  price,
-  description,
-  features,
-  isRecommended = false,
-  isLoading = false,
-  isUserCurrentPlan = false,
-  onSubscribe
-}: PlanCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Mapeia os IDs de plano para cores específicas
-  const planColors = {
-    basic: 'border-slate-200 bg-slate-50 hover:border-slate-300',
-    pro: 'border-emerald-200 bg-emerald-50 hover:border-emerald-300',
-    enterprise: 'border-violet-200 bg-violet-50 hover:border-violet-300'
-  };
-
-  // Mapeia os IDs de plano para cores de botões
-  const buttonColors = {
-    basic: 'bg-slate-700 hover:bg-slate-800',
-    pro: 'bg-emerald-700 hover:bg-emerald-800',
-    enterprise: 'bg-violet-700 hover:bg-violet-800'
-  };
-
+export function PlanCard({ 
+  id, 
+  name, 
+  description, 
+  price, 
+  features, 
+  popular = false, 
+  current = false,
+  onSelect,
+  disabled = false
+}: PlanProps) {
   return (
     <Card 
       className={cn(
-        "w-full transition-all duration-300",
-        planColors[id],
-        isRecommended && "border-2 border-primary shadow-lg scale-105",
-        isHovered && "shadow-md transform -translate-y-1"
+        "relative flex flex-col justify-between overflow-hidden transition-all border-2",
+        popular ? "border-primary shadow-lg scale-[1.02]" : "border-muted",
+        current ? "bg-primary/5" : ""
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {isRecommended && (
-        <div className="absolute -top-4 left-0 right-0 flex justify-center">
-          <span className="bg-primary text-primary-foreground text-xs font-semibold rounded-full px-3 py-1">
-            Recomendado
-          </span>
+      {popular && (
+        <div className="absolute top-0 right-0">
+          <div className="text-xs font-bold uppercase text-white bg-primary py-1 px-3 rounded-bl-md">
+            Popular
+          </div>
         </div>
       )}
       
-      <CardHeader>
-        <CardTitle className="text-xl font-bold">{title}</CardTitle>
-        <CardDescription className="text-sm">{description}</CardDescription>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div className="flex items-baseline">
-          <span className="text-3xl font-bold">R${price}</span>
-          <span className="text-sm text-muted-foreground ml-1">/mês</span>
-        </div>
+      <div>
+        <CardHeader>
+          <CardTitle className="text-xl">{name}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
         
-        <ul className="space-y-2">
-          {features.map((feature, index) => (
-            <li key={index} className="flex items-start">
-              <CheckCircle 
-                className={cn(
-                  "h-5 w-5 mr-2 flex-shrink-0",
-                  feature.included ? "text-green-500" : "text-gray-300"
-                )} 
-              />
-              <span className={cn(
-                "text-sm",
-                !feature.included && "text-muted-foreground line-through"
-              )}>
-                {feature.text}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
+        <CardContent>
+          <div className="mb-4">
+            <span className="text-3xl font-bold">R${price.toFixed(2)}</span>
+            <span className="text-muted-foreground">/mês</span>
+          </div>
+          
+          <ul className="space-y-2">
+            {features.map((feature, index) => (
+              <li key={index} className="flex items-center gap-2">
+                {feature.included ? (
+                  <Check className="h-4 w-4 text-primary" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className={cn(
+                  "text-sm",
+                  !feature.included && "text-muted-foreground line-through"
+                )}>
+                  {feature.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </div>
       
-      <CardFooter>
+      <CardFooter className="pt-4">
         <Button 
-          className={cn(
-            "w-full", 
-            buttonColors[id],
-            isUserCurrentPlan && "bg-green-600 hover:bg-green-700"
-          )}
-          disabled={isLoading || isUserCurrentPlan}
-          onClick={() => onSubscribe(id)}
+          className="w-full" 
+          variant={current ? "secondary" : popular ? "default" : "outline"}
+          onClick={() => onSelect(id)}
+          disabled={disabled || current}
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processando...
-            </>
-          ) : isUserCurrentPlan ? (
-            "Plano Atual"
-          ) : (
-            "Assinar Agora"
-          )}
+          {current ? "Plano Atual" : "Selecionar Plano"}
         </Button>
       </CardFooter>
     </Card>

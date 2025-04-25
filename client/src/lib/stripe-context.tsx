@@ -17,10 +17,10 @@ type StripeContextType = {
 
 const StripeContext = createContext<StripeContextType | undefined>(undefined);
 
-export function useStripe() {
+export function useStripeContext() {
   const context = useContext(StripeContext);
   if (!context) {
-    throw new Error('useStripe deve ser usado dentro de um StripeProvider');
+    throw new Error('useStripeContext deve ser usado dentro de um StripeProvider');
   }
   return context;
 }

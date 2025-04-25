@@ -1,27 +1,33 @@
 import Stripe from 'stripe';
-import { User, Mentor, Subscription, Payment } from '@shared/schema';
+import { storage } from './storage';
+import { User } from '@shared/schema';
 
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+  console.warn('STRIPE_SECRET_KEY não configurada! Muitas operações do Stripe falharão.');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+// Inicializa o cliente Stripe com a chave secreta
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16'
 });
 
-// Price IDs das assinaturas no Stripe
-// Estes IDs seriam configurados no dashboard do Stripe
-const SUBSCRIPTION_PRICES = {
-  basic: process.env.STRIPE_PRICE_ID_BASIC,
-  pro: process.env.STRIPE_PRICE_ID_PRO,
-  enterprise: process.env.STRIPE_PRICE_ID_ENTERPRISE,
-};
-
-// Mapeamento de planos para limites de clientes
-const PLAN_CLIENT_LIMITS = {
-  basic: 5,
-  pro: 20,
-  enterprise: 50,
+// Mapeia os IDs dos planos para preços e limites
+const PLANS = {
+  basic: {
+    priceId: process.env.STRIPE_BASIC_PRICE_ID || 'price_basic', // Substituir pelos IDs reais do Stripe
+    maxClients: 5,
+    price: 49.90
+  },
+  pro: {
+    priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    maxClients: 20,
+    price: 99.90
+  },
+  enterprise: {
+    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
+    maxClients: 50,
+    price: 199.90
+  }
 };
 
 export const stripeService = {
@@ -29,19 +35,31 @@ export const stripeService = {
    * Cria ou atualiza um cliente no Stripe
    */
   async getOrCreateCustomer(user: User): Promise<string> {
-    // Se o usuário já tem um ID de cliente no Stripe, retorna esse ID
+    // Se o usuário já tiver um ID de cliente do Stripe, use-o
     if (user.stripeCustomerId) {
-      return user.stripeCustomerId;
+      try {
+        // Verifica se o cliente ainda existe no Stripe
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (!customer.deleted) {
+          return user.stripeCustomerId;
+        }
+      } catch (error) {
+        console.error('Erro ao buscar cliente do Stripe:', error);
+      }
     }
 
-    // Se não tem, cria um novo cliente no Stripe
+    // Cria um novo cliente no Stripe
     const customer = await stripe.customers.create({
       email: user.email,
       name: user.name,
       metadata: {
-        userId: user.id.toString(),
-      },
+        userId: user.id.toString()
+      }
     });
+
+    // Atualiza o ID do cliente no banco de dados
+    // Aqui presumimos que exista uma função para atualizar o ID do cliente Stripe no usuário
+    const updatedUser = await storage.updateUserStripeCustomerId(user.id, customer.id);
 
     return customer.id;
   },
@@ -49,38 +67,49 @@ export const stripeService = {
   /**
    * Cria uma assinatura para um mentor
    */
-  async createSubscription(user: User, mentorId: number, planId: 'basic' | 'pro' | 'enterprise'): Promise<{
-    subscriptionId: string,
-    clientSecret: string | null
+  async createSubscription(user: User, planId: 'basic' | 'pro' | 'enterprise'): Promise<{
+    subscriptionId: string;
+    clientSecret: string | null;
   }> {
-    // Garante que temos o stripe customer id
-    const customerId = await this.getOrCreateCustomer(user);
-
-    const priceId = SUBSCRIPTION_PRICES[planId];
-    if (!priceId) {
-      throw new Error(`Invalid plan: ${planId}`);
+    if (!PLANS[planId]) {
+      throw new Error(`Plano inválido: ${planId}`);
     }
 
-    // Cria a assinatura no Stripe com pagamento pendente
+    const customerId = await this.getOrCreateCustomer(user);
+
+    // Cria a assinatura com pagamento pendente
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: priceId }],
+      items: [
+        {
+          price: PLANS[planId].priceId,
+        },
+      ],
       payment_behavior: 'default_incomplete',
+      payment_settings: {
+        save_default_payment_method: 'on_subscription',
+      },
       expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId: user.id.toString(),
-        mentorId: mentorId.toString(),
-        plan: planId
-      },
-      trial_period_days: 7, // 7 dias de período de teste grátis
+        planId
+      }
     });
 
-    const invoice = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
+    // Registra a assinatura no banco de dados
+    await storage.updateUserSubscription(user.id, {
+      stripeSubscriptionId: subscription.id,
+      plan: planId,
+      status: 'incomplete',
+      maxClients: PLANS[planId].maxClients
+    });
+
+    // @ts-ignore - O TS não reconhece o expand de latest_invoice.payment_intent
+    const clientSecret = subscription.latest_invoice.payment_intent?.client_secret || null;
 
     return {
       subscriptionId: subscription.id,
-      clientSecret: paymentIntent?.client_secret || null,
+      clientSecret
     };
   },
 
@@ -88,57 +117,62 @@ export const stripeService = {
    * Atualiza uma assinatura para um novo plano
    */
   async updateSubscription(
-    subscriptionId: string,
+    user: User,
     planId: 'basic' | 'pro' | 'enterprise'
   ): Promise<{
-    updated: boolean,
-    clientSecret: string | null
+    subscriptionId: string;
+    clientSecret: string | null;
+    success: boolean;
   }> {
-    const priceId = SUBSCRIPTION_PRICES[planId];
-    if (!priceId) {
-      throw new Error(`Invalid plan: ${planId}`);
+    if (!user.stripeSubscriptionId) {
+      throw new Error('Usuário não possui uma assinatura ativa');
+    }
+
+    if (!PLANS[planId]) {
+      throw new Error(`Plano inválido: ${planId}`);
     }
 
     try {
-      // Busca a assinatura existente
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      
-      // Atualiza para o novo plano
-      const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
-        items: [
-          {
-            id: subscription.items.data[0].id,
-            price: priceId,
+      // Recupera a assinatura atual
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+
+      // Atualiza os itens da assinatura para o novo plano
+      const updatedSubscription = await stripe.subscriptions.update(
+        user.stripeSubscriptionId,
+        {
+          items: [
+            {
+              id: subscription.items.data[0].id,
+              price: PLANS[planId].priceId,
+            },
+          ],
+          proration_behavior: 'create_prorations',
+          metadata: {
+            ...subscription.metadata,
+            planId,
           },
-        ],
-        proration_behavior: 'create_prorations',
-        metadata: {
-          ...subscription.metadata,
-          plan: planId
+          expand: ['latest_invoice.payment_intent'],
         }
+      );
+
+      // Atualiza o plano do usuário no banco de dados
+      await storage.updateUserSubscription(user.id, {
+        plan: planId,
+        maxClients: PLANS[planId].maxClients,
+        // Mantém o mesmo status
       });
 
-      // Se precisar de uma nova forma de pagamento
-      let clientSecret = null;
-      if (updatedSubscription.latest_invoice) {
-        const invoice = await stripe.invoices.retrieve(
-          updatedSubscription.latest_invoice as string,
-          { expand: ['payment_intent'] }
-        );
-        
-        if (invoice.payment_intent) {
-          const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
-          clientSecret = paymentIntent.client_secret;
-        }
-      }
+      // @ts-ignore - Ignorando erro do TypeScript aqui
+      const clientSecret = updatedSubscription.latest_invoice?.payment_intent?.client_secret || null;
 
       return {
-        updated: true,
-        clientSecret
+        subscriptionId: updatedSubscription.id,
+        clientSecret,
+        success: true,
       };
     } catch (error) {
-      console.error('Error updating subscription:', error);
-      throw error;
+      console.error('Erro ao atualizar assinatura:', error);
+      throw new Error('Erro ao atualizar assinatura. Contate o suporte.');
     }
   },
 
@@ -147,21 +181,36 @@ export const stripeService = {
    */
   async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd = true): Promise<boolean> {
     try {
-      // Se cancelAtPeriodEnd for true, a assinatura será cancelada no final do período atual,
-      // caso contrário, será cancelada imediatamente
-      await stripe.subscriptions.update(subscriptionId, {
-        cancel_at_period_end: cancelAtPeriodEnd,
-      });
-
-      // Se for cancelar imediatamente
-      if (!cancelAtPeriodEnd) {
+      if (cancelAtPeriodEnd) {
+        // Cancela no final do período
+        await stripe.subscriptions.update(subscriptionId, {
+          cancel_at_period_end: true,
+        });
+      } else {
+        // Cancela imediatamente
         await stripe.subscriptions.cancel(subscriptionId);
+      }
+
+      // Busca usuário pela assinatura para atualizar seu status no banco
+      const user = await storage.getUserByStripeSubscriptionId(subscriptionId);
+      if (user) {
+        if (cancelAtPeriodEnd) {
+          // Marca como cancelamento agendado
+          await storage.updateUserSubscription(user.id, {
+            cancelAtPeriodEnd: true
+          });
+        } else {
+          // Marca como inativo imediatamente
+          await storage.updateUserSubscription(user.id, {
+            status: 'canceled'
+          });
+        }
       }
 
       return true;
     } catch (error) {
-      console.error('Error canceling subscription:', error);
-      throw error;
+      console.error('Erro ao cancelar assinatura:', error);
+      throw new Error('Erro ao cancelar assinatura. Contate o suporte.');
     }
   },
 
@@ -170,15 +219,22 @@ export const stripeService = {
    */
   async reactivateSubscription(subscriptionId: string): Promise<boolean> {
     try {
-      // Isso só funciona se a assinatura ainda não expirou (cancel_at_period_end = true)
       await stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: false,
       });
 
+      // Busca usuário pela assinatura para atualizar seu status no banco
+      const user = await storage.getUserByStripeSubscriptionId(subscriptionId);
+      if (user) {
+        await storage.updateUserSubscription(user.id, {
+          cancelAtPeriodEnd: false
+        });
+      }
+
       return true;
     } catch (error) {
-      console.error('Error reactivating subscription:', error);
-      throw error;
+      console.error('Erro ao reativar assinatura:', error);
+      throw new Error('Erro ao reativar assinatura. Contate o suporte.');
     }
   },
 
@@ -186,85 +242,263 @@ export const stripeService = {
    * Busca uma assinatura no Stripe
    */
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    return await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ['customer', 'latest_invoice'],
-    });
+    try {
+      return await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['customer', 'default_payment_method'],
+      });
+    } catch (error) {
+      console.error('Erro ao buscar assinatura:', error);
+      throw new Error('Erro ao buscar dados da assinatura. Contate o suporte.');
+    }
   },
 
   /**
    * Busca uma fatura no Stripe
    */
   async getInvoice(invoiceId: string): Promise<Stripe.Invoice> {
-    return await stripe.invoices.retrieve(invoiceId, {
-      expand: ['payment_intent', 'subscription'],
-    });
+    try {
+      return await stripe.invoices.retrieve(invoiceId);
+    } catch (error) {
+      console.error('Erro ao buscar fatura:', error);
+      throw new Error('Erro ao buscar fatura. Contate o suporte.');
+    }
   },
 
   /**
    * Processa um webhook de evento do Stripe
    */
   async handleWebhookEvent(payload: Buffer, signature: string): Promise<{
-    type: string;
-    data: any;
+    received: boolean;
+    event?: Stripe.Event;
+    error?: Error;
   }> {
-    let event;
-
-    try {
-      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      
-      if (!endpointSecret) {
-        throw new Error('Missing STRIPE_WEBHOOK_SECRET environment variable');
-      }
-
-      // Verifica a assinatura do webhook
-      event = stripe.webhooks.constructEvent(
-        payload, 
-        signature, 
-        endpointSecret
-      );
-    } catch (err: any) {
-      console.error(`Webhook Error: ${err.message}`);
-      throw new Error(`Webhook Error: ${err.message}`);
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      return { received: false, error: new Error('STRIPE_WEBHOOK_SECRET não está configurado') };
     }
 
-    return {
-      type: event.type,
-      data: event.data.object,
-    };
+    try {
+      // Verifica a assinatura do webhook para garantir que veio do Stripe
+      const event = stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+
+      // Processa o evento com base no tipo
+      switch (event.type) {
+        // Assinatura criada
+        case 'customer.subscription.created':
+          await this.handleSubscriptionCreated(event.data.object as Stripe.Subscription);
+          break;
+
+        // Assinatura atualizada
+        case 'customer.subscription.updated':
+          await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+          break;
+
+        // Assinatura deletada
+        case 'customer.subscription.deleted':
+          await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          break;
+
+        // Pagamento de fatura bem-sucedido
+        case 'invoice.payment_succeeded':
+          await this.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+          break;
+
+        // Falha no pagamento de fatura
+        case 'invoice.payment_failed':
+          await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+          break;
+      }
+
+      return { received: true, event };
+    } catch (error: any) {
+      console.error('Erro ao processar webhook do Stripe:', error);
+      return { received: false, error };
+    }
+  },
+
+  /**
+   * Manipulador para evento de assinatura criada
+   */
+  async handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<void> {
+    const userId = subscription.metadata.userId;
+    if (!userId) return;
+
+    const planId = subscription.metadata.planId as 'basic' | 'pro' | 'enterprise';
+    if (!planId || !PLANS[planId]) return;
+
+    // Atualiza o status da assinatura do usuário
+    const user = await storage.getUser(parseInt(userId));
+    if (user) {
+      await storage.updateUserSubscription(user.id, {
+        status: subscription.status,
+        maxClients: PLANS[planId].maxClients,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000)
+      });
+    }
+  },
+
+  /**
+   * Manipulador para evento de assinatura atualizada
+   */
+  async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+    const userId = subscription.metadata.userId;
+    if (!userId) return;
+
+    // Atualiza o status da assinatura do usuário
+    const user = await storage.getUser(parseInt(userId));
+    if (user) {
+      await storage.updateUserSubscription(user.id, {
+        status: subscription.status,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end
+      });
+    }
+  },
+
+  /**
+   * Manipulador para evento de assinatura deletada
+   */
+  async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+    const userId = subscription.metadata.userId;
+    if (!userId) return;
+
+    // Marca a assinatura como cancelada
+    const user = await storage.getUser(parseInt(userId));
+    if (user) {
+      await storage.updateUserSubscription(user.id, {
+        status: 'canceled',
+      });
+    }
+  },
+
+  /**
+   * Manipulador para evento de pagamento de fatura bem-sucedido
+   */
+  async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+    if (!invoice.subscription) return;
+
+    // Busca a assinatura para obter o ID do usuário
+    try {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      const userId = subscription.metadata.userId;
+      if (!userId) return;
+
+      // Registra a fatura no sistema
+      const user = await storage.getUser(parseInt(userId));
+      if (user) {
+        // Aqui você pode registrar a fatura no seu banco de dados
+        // e enviar uma notificação ou e-mail para o usuário
+        await storage.createInvoiceRecord({
+          userId: user.id,
+          stripeInvoiceId: invoice.id,
+          amount: invoice.amount_paid / 100, // Convertendo de centavos para a moeda
+          status: invoice.status || 'paid',
+          periodStart: new Date(invoice.period_start * 1000),
+          periodEnd: new Date(invoice.period_end * 1000),
+          createdAt: new Date(invoice.created * 1000),
+          paidAt: invoice.status === 'paid' ? new Date() : undefined,
+          description: invoice.description || `Fatura #${invoice.number}`
+        });
+
+        // Se a fatura foi paga, atualiza o status da assinatura para ativo
+        if (invoice.status === 'paid' && subscription.status === 'incomplete') {
+          await storage.updateUserSubscription(user.id, {
+            status: 'active'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao processar pagamento de fatura:', error);
+    }
+  },
+
+  /**
+   * Manipulador para evento de falha no pagamento de fatura
+   */
+  async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+    if (!invoice.subscription) return;
+
+    // Busca a assinatura para obter o ID do usuário
+    try {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      const userId = subscription.metadata.userId;
+      if (!userId) return;
+
+      // Registra a falha no pagamento e atualiza o status
+      const user = await storage.getUser(parseInt(userId));
+      if (user) {
+        // Registra a fatura com status de falha
+        await storage.createInvoiceRecord({
+          userId: user.id,
+          stripeInvoiceId: invoice.id,
+          amount: invoice.amount_due / 100, // Convertendo de centavos para a moeda
+          status: 'failed',
+          periodStart: new Date(invoice.period_start * 1000),
+          periodEnd: new Date(invoice.period_end * 1000),
+          createdAt: new Date(invoice.created * 1000),
+          description: invoice.description || `Fatura #${invoice.number} (Falha no pagamento)`
+        });
+
+        // Atualiza o status da assinatura para indicar problema de pagamento
+        await storage.updateUserSubscription(user.id, {
+          status: subscription.status
+        });
+
+        // Aqui você pode enviar uma notificação para o usuário sobre o problema no pagamento
+      }
+    } catch (error) {
+      console.error('Erro ao processar falha de pagamento:', error);
+    }
   },
 
   /**
    * Busca as faturas de uma assinatura
    */
   async listInvoices(subscriptionId: string): Promise<Stripe.Invoice[]> {
-    const invoices = await stripe.invoices.list({
-      subscription: subscriptionId,
-      limit: 10,
-    });
-    
-    return invoices.data;
+    try {
+      const invoices = await stripe.invoices.list({
+        subscription: subscriptionId,
+        limit: 10,
+      });
+      return invoices.data;
+    } catch (error) {
+      console.error('Erro ao listar faturas:', error);
+      throw new Error('Erro ao buscar histórico de faturas. Contate o suporte.');
+    }
   },
 
   /**
    * Cria um novo método de pagamento
    */
   async createSetupIntent(customerId: string): Promise<Stripe.SetupIntent> {
-    return await stripe.setupIntents.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-    });
+    try {
+      return await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+      });
+    } catch (error) {
+      console.error('Erro ao criar setup intent:', error);
+      throw new Error('Erro ao configurar método de pagamento. Contate o suporte.');
+    }
   },
 
   /**
    * Lista métodos de pagamento de um cliente
    */
   async listPaymentMethods(customerId: string): Promise<Stripe.PaymentMethod[]> {
-    const paymentMethods = await stripe.paymentMethods.list({
-      customer: customerId,
-      type: 'card',
-    });
-    
-    return paymentMethods.data;
+    try {
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+      return paymentMethods.data;
+    } catch (error) {
+      console.error('Erro ao listar métodos de pagamento:', error);
+      throw new Error('Erro ao buscar métodos de pagamento. Contate o suporte.');
+    }
   },
 
   /**
@@ -273,17 +507,16 @@ export const stripeService = {
   async updateDefaultPaymentMethod(
     customerId: string,
     paymentMethodId: string
-  ): Promise<boolean> {
+  ): Promise<Stripe.Customer> {
     try {
-      await stripe.customers.update(customerId, {
+      return await stripe.customers.update(customerId, {
         invoice_settings: {
           default_payment_method: paymentMethodId,
         },
       });
-      return true;
     } catch (error) {
-      console.error('Error updating default payment method:', error);
-      throw error;
+      console.error('Erro ao atualizar método de pagamento padrão:', error);
+      throw new Error('Erro ao atualizar método de pagamento. Contate o suporte.');
     }
   },
 
@@ -291,13 +524,18 @@ export const stripeService = {
    * Obtém detalhes de um Product no Stripe
    */
   async getProduct(productId: string): Promise<Stripe.Product> {
-    return await stripe.products.retrieve(productId);
+    try {
+      return await stripe.products.retrieve(productId);
+    } catch (error) {
+      console.error('Erro ao buscar produto:', error);
+      throw new Error('Erro ao buscar detalhes do produto. Contate o suporte.');
+    }
   },
 
   /**
    * Utilitário para calcular valor máximo de clientes baseado no plano
    */
   getMaxClientsForPlan(plan: 'basic' | 'pro' | 'enterprise'): number {
-    return PLAN_CLIENT_LIMITS[plan] || 1;
+    return PLANS[plan]?.maxClients || 5; // Padrão para 5 clientes se o plano não for encontrado
   }
 };
