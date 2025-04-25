@@ -5,7 +5,8 @@ import {
   Menu, 
   Bell, 
   ChevronDown, 
-  User
+  User,
+  BrainCircuit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,15 +16,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { FloatingChat } from "@/components/assistant/floating-chat";
+import { AssistantType } from "@/lib/gemini-service";
 
 export function Header() {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, isMentor } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   if (!user) return null;
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const toggleAssistant = () => {
+    setIsAssistantOpen(!isAssistantOpen);
   };
 
   const handleLogout = () => {
@@ -38,6 +46,9 @@ export function Header() {
       .join('')
       .toUpperCase();
   };
+
+  // Determinar o tipo de assistente baseado no papel do usuário
+  const assistantType: AssistantType = isMentor ? "mentor" : "client";
 
   const initials = user.name ? getInitials(user.name) : user.username.substring(0, 2).toUpperCase();
 
@@ -60,6 +71,15 @@ export function Header() {
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-700">
             <Bell className="h-5 w-5" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-slate-500 hover:text-slate-700"
+            onClick={toggleAssistant}
+          >
+            <BrainCircuit className="h-5 w-5" />
           </Button>
 
           <DropdownMenu>
@@ -93,6 +113,18 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {/* Componente de chat flutuante */}
+          <FloatingChat 
+            assistantType={assistantType}
+            isOpen={isAssistantOpen}
+            onClose={toggleAssistant}
+            contextData={{
+              userId: user.id,
+              userName: user.name || user.username,
+              role: user.role
+            }}
+          />
         </div>
       </div>
 
