@@ -20,13 +20,13 @@ import { Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const loginSchema = z.object({
-  username: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
+  username: z.string().min(1, "Nome de usuário é obrigatório"),
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
 const registerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  username: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
+  username: z.string().min(1, "Nome de usuário é obrigatório"),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
   confirmPassword: z.string().min(6, "A confirmação de senha deve ter pelo menos 6 caracteres"),
   role: z.enum(["mentor"]),
@@ -96,7 +96,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
         <div className="text-center mb-4">
           <h2 className="text-xl font-semibold">Bem-vindo de volta</h2>
           <p className="text-muted-foreground text-sm">
-            Entre com suas credenciais para acessar sua conta
+            Entre com seu nome de usuário e senha para acessar sua conta
           </p>
         </div>
 
@@ -107,9 +107,9 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>E-mail</FormLabel>
+                  <FormLabel>Nome de usuário</FormLabel>
                   <FormControl>
-                    <Input placeholder="seu@email.com" {...field} />
+                    <Input placeholder="Seu nome de usuário" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -152,13 +152,29 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
           </form>
         </Form>
 
-        <div>
-          <p className="text-center text-sm text-muted-foreground mt-4">
+        <div className="space-y-2 mt-4">
+          <p className="text-center text-sm text-muted-foreground">
             Você é um cliente?{" "}
             <span className="text-primary cursor-pointer" onClick={() => setActiveTab("login")}>
               Entre com as credenciais enviadas pelo seu mentor
             </span>
           </p>
+          
+          <div className="bg-primary/10 rounded-lg p-3 mt-2">
+            <p className="text-center text-sm font-medium text-primary">
+              Usuários para teste:
+            </p>
+            <div className="flex justify-center gap-8 mt-1">
+              <div className="text-xs">
+                <p><strong>Mentor:</strong> admin</p>
+                <p><strong>Senha:</strong> admin</p>
+              </div>
+              <div className="text-xs">
+                <p><strong>Cliente:</strong> cliente</p>
+                <p><strong>Senha:</strong> admin</p>
+              </div>
+            </div>
+          </div>
         </div>
       </TabsContent>
 
@@ -191,9 +207,9 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>E-mail</FormLabel>
+                  <FormLabel>Nome de usuário</FormLabel>
                   <FormControl>
-                    <Input placeholder="seu@email.com" {...field} />
+                    <Input placeholder="Seu nome de usuário" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
