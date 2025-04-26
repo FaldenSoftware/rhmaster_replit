@@ -51,19 +51,33 @@ export function SubscriptionFormContainer({
         }
 
         // Busca o client secret do Stripe para iniciar o pagamento
-        const response = await apiRequest('POST', '/api/subscription/create-subscription', { 
+        const response = await apiRequest('POST', '/api/subscription/create-payment-intent', { 
           planId
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao iniciar assinatura');
+          const errorText = await response.text();
+          try {
+            // Tenta fazer o parse do texto como JSON
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.message || 'Erro ao iniciar assinatura');
+          } catch (jsonError) {
+            // Se falhar no parse, retorna o texto original ou uma mensagem de erro genérica
+            throw new Error(errorText || 'Erro ao iniciar assinatura. Formato de resposta inválido.');
+          }
         }
 
-        const data = await response.json();
+        let data;
+        try {
+          const responseText = await response.text();
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Erro ao fazer parse do JSON:', e);
+          throw new Error('Erro no formato da resposta do servidor');
+        }
         
         if (!data.clientSecret) {
-          throw new Error('Não foi possível iniciar o processo de pagamento');
+          throw new Error('Não foi possível iniciar o processo de pagamento. Client secret não fornecido.');
         }
         
         setClientSecret(data.clientSecret);
@@ -120,18 +134,19 @@ export function SubscriptionFormContainer({
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <SubscriptionForm onSuccess={onSuccess} onCancel={onCancel} />
+      <SubscriptionForm clientSecret={clientSecret} onSuccess={onSuccess} onCancel={onCancel} />
     </Elements>
   );
 }
 
 type SubscriptionFormProps = {
+  clientSecret: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 };
 
 // Formulário de pagamento
-function SubscriptionForm({ onSuccess, onCancel }: SubscriptionFormProps) {
+function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -163,8 +178,7 @@ function SubscriptionForm({ onSuccess, onCancel }: SubscriptionFormProps) {
     try {
       // Confirma o pagamento com o Stripe
       const { error, paymentIntent } = await stripe.confirmCardPayment(
-        // O clientSecret foi definido quando o PaymentIntent foi criado
-        '',
+        clientSecret,
         {
           payment_method: {
             card: cardElement,

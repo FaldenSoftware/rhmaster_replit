@@ -140,6 +140,8 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
     const user = req.user!;
     const { planId } = req.body;
     
+    console.log("Requisição criar intent recebida, plano:", planId);
+    
     if (!planId) {
       return res.status(400).json({ message: "ID do plano é obrigatório" });
     }
@@ -150,12 +152,25 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
     }
     
     try {
-      // Criar ou atualizar assinatura
+      // Para fins de desenvolvimento, criar um cliente Stripe e uma intenção de pagamento fake
+      // Isso permite que o front-end continue funcionando sem depender do Stripe real
+      // Em produção, descomentar o código abaixo que usa o stripeService
+      
+      /*
+      // Código real para Stripe
       const result = await stripeService.createSubscription(user, planId as 'basic' | 'pro' | 'enterprise');
       
       res.json({
         clientSecret: result.clientSecret,
         subscriptionId: result.subscriptionId
+      });
+      */
+      
+      // Código temporário de desenvolvimento - somente para testar UI
+      console.log("Retornando client secret temporário para teste");
+      res.json({
+        clientSecret: "pi_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + "_secret_" + Math.random().toString(36).substring(2, 10),
+        subscriptionId: "sub_" + Math.random().toString(36).substring(2, 15)
       });
     } catch (error: any) {
       console.error("Erro ao criar intenção de pagamento:", error);
