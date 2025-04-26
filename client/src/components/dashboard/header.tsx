@@ -63,8 +63,8 @@ export function Header() {
         </button>
 
         <div className="flex-1 ml-4 md:ml-0">
-          <h1 className="text-lg font-medium text-slate-900">
-            {user.role === 'mentor' ? 'Painel do Mentor' : 'Painel do Cliente'}
+          <h1 className="text-lg font-semibold text-primary">
+            {user.role === 'mentor' ? 'RH Master • Painel do Mentor' : 'RH Master • Painel do Cliente'}
           </h1>
         </div>
 
@@ -76,10 +76,11 @@ export function Header() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="text-slate-500 hover:text-slate-700"
+            className="text-slate-500 hover:text-slate-700 relative"
             onClick={toggleAssistant}
           >
             <BrainCircuit className="h-5 w-5" />
+            <span className="absolute -top-1 -right-1 bg-amber-500 w-2 h-2 rounded-full"></span>
           </Button>
 
           <DropdownMenu>

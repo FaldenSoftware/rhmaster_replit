@@ -254,82 +254,115 @@ export function PricingSection() {
           </button>
         </div>
 
-        {/* Desktop View - All Plans Visible */}
-        <div className="hidden md:grid md:grid-cols-3 gap-8">
-          {plans.map((plan, index) => (
-            <div
-              key={index}
-              className={`bg-white rounded-xl border ${
-                plan.popular
-                  ? "border-primary relative shadow-lg transform md:-translate-y-4 scale-105 z-10"
-                  : "border-slate-200"
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary text-white text-xs font-bold py-1 px-3 rounded-full">
-                  Mais Popular
-                </div>
-              )}
-              
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-slate-900">{plan.name}</h3>
-                <p className="text-slate-500 mt-2 min-h-[48px]">{plan.description}</p>
-                
-                <div className="mt-6 mb-6">
-                  <div className="flex items-end">
-                    <span className="text-4xl font-bold text-slate-900">
-                      {annual 
-                        ? `R$${Math.round(plan.monthlyPrice * annualDiscount)}`
-                        : `R$${plan.monthlyPrice}`
-                      }
-                    </span>
-                    <span className="text-slate-500 ml-2">
-                      /{annual ? 'mês*' : 'mês'}
-                    </span>
-                  </div>
-                  {annual && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      *Cobrado anualmente como 
-                      R${Math.round(plan.monthlyPrice * annualDiscount * 12)}/ano
-                    </p>
-                  )}
-                </div>
-                
-                <Link href="/auth">
-                  <Button 
-                    className={`w-full ${plan.popular ? "bg-primary" : ""}`}
-                    variant={plan.popular ? "default" : "outline"}
-                  >
-                    {plan.name === "Enterprise" ? "Fale Conosco" : "Começar Agora"}
-                  </Button>
-                </Link>
-                
-                <div className="mt-8 space-y-4">
-                  <p className="font-medium text-slate-700">Inclui:</p>
-                  {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-start">
-                      <Check className="h-5 w-5 text-primary flex-shrink-0 mr-2" />
-                      <span className="text-slate-600 text-sm">{feature}</span>
-                    </div>
-                  ))}
-                  
-                  {plan.limitations.length > 0 && (
-                    <>
-                      <p className="font-medium text-slate-700 mt-6 pt-4 border-t border-slate-100">
-                        Não inclui:
-                      </p>
-                      {plan.limitations.map((limitation, i) => (
-                        <div key={i} className="flex items-start">
-                          <X className="h-5 w-5 text-slate-300 flex-shrink-0 mr-2" />
-                          <span className="text-slate-500 text-sm">{limitation}</span>
+        {/* Desktop View - Texto à esquerda e Cards de planos animados à direita */}
+        <div className="hidden md:flex md:flex-row gap-8">
+          {/* Coluna da esquerda com texto fixo */}
+          <div className="w-1/3 flex flex-col justify-center">
+            <h3 className="text-3xl font-bold text-slate-900 mb-4">Escolha o plano ideal para o seu negócio</h3>
+            <p className="text-slate-600 mb-6">
+              Todos os planos incluem período de avaliação gratuito de 14 dias, 
+              sem necessidade de cartão de crédito para começar.
+            </p>
+            <ul className="space-y-4">
+              <li className="flex items-start">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mr-2 mt-0.5" />
+                <span>Suporte personalizado durante todo o período de teste</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mr-2 mt-0.5" />
+                <span>Cancele a qualquer momento durante o período de avaliação</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mr-2 mt-0.5" />
+                <span>Migração gratuita de dados para planos Enterprise</span>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Coluna da direita com cards rotativos */}
+          <div className="w-2/3 relative">
+            {/* Cards animados */}
+            <div className="flex justify-center items-center h-full">
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={activePlanIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full max-w-md"
+                >
+                  <div className={`bg-white rounded-xl border ${
+                    plans[activePlanIndex].popular
+                      ? "border-primary shadow-lg"
+                      : "border-slate-200"
+                  }`}>
+                    {plans[activePlanIndex].popular && (
+                      <div className="absolute top-0 right-0 bg-yellow-400 text-primary-foreground text-xs font-bold py-1 px-3 transform rotate-6 shadow-lg m-2">
+                        Oferta por tempo limitado!
+                      </div>
+                    )}
+                    
+                    <div className="p-6">
+                      <h3 className="text-2xl font-bold text-slate-900">{plans[activePlanIndex].name}</h3>
+                      <p className="text-slate-500 mt-2 min-h-[48px]">{plans[activePlanIndex].description}</p>
+                      
+                      <div className="mt-6 mb-6">
+                        <div className="flex items-end">
+                          <span className="text-4xl font-bold text-slate-900">
+                            {annual 
+                              ? `R$${Math.round(plans[activePlanIndex].monthlyPrice * annualDiscount)}`
+                              : `R$${plans[activePlanIndex].monthlyPrice}`
+                            }
+                          </span>
+                          <span className="text-slate-500 ml-2">
+                            /{annual ? 'mês*' : 'mês'}
+                          </span>
                         </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
+                        {annual && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            *Cobrado anualmente como 
+                            R${Math.round(plans[activePlanIndex].monthlyPrice * annualDiscount * 12)}/ano
+                          </p>
+                        )}
+                      </div>
+                      
+                      <Link href="/auth">
+                        <Button 
+                          className={`w-full ${plans[activePlanIndex].popular ? "bg-primary" : ""}`}
+                          variant={plans[activePlanIndex].popular ? "default" : "outline"}
+                        >
+                          {plans[activePlanIndex].name === "Enterprise" ? "Fale Conosco" : "Começar Agora"}
+                        </Button>
+                      </Link>
+                      
+                      <div className="mt-8 space-y-4">
+                        <p className="font-medium text-slate-700">Inclui:</p>
+                        {plans[activePlanIndex].features.map((feature, i) => (
+                          <div key={i} className="flex items-start">
+                            <Check className="h-5 w-5 text-primary flex-shrink-0 mr-2" />
+                            <span className="text-slate-600 text-sm">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
-          ))}
+            
+            {/* Indicadores de planos */}
+            <div className="flex justify-center mt-6 space-x-2">
+              {plans.map((_, index) => (
+                <button 
+                  key={index}
+                  onClick={() => handlePlanChange(index)}
+                  className={`w-3 h-3 rounded-full ${index === activePlanIndex ? 'bg-primary' : 'bg-slate-300'}`}
+                  aria-label={`Ir para plano ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
         
         <div className="mt-16 bg-white p-8 rounded-lg border border-slate-200 text-center">

@@ -138,19 +138,19 @@ export function Sidebar() {
           <span>Configurações</span>
         </Link>
         <Link
-          href="/help"
+          href="/dashboard/help"
           className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent/20"
         >
           <HelpCircle className="h-5 w-5" />
           <span>Ajuda</span>
         </Link>
         <Button
-          variant="outline"
-          className="w-full justify-start text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
+          variant="default"
+          className="w-full justify-start bg-red-600 hover:bg-red-700 text-white"
           onClick={handleLogout}
         >
           <LogOut className="h-5 w-5 mr-2" />
-          Sair
+          Sair da Conta
         </Button>
       </div>
     </div>

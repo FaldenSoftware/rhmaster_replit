@@ -12,10 +12,10 @@ export function HeroSection() {
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 md:pr-12 mb-10 md:mb-0">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight mb-6">
-              Mentoria profissional elevada por{" "}
-              <span className="text-primary relative">
-                dados
-                <span className="absolute bottom-1 left-0 w-full h-2 bg-primary/20 rounded-full"></span>
+              Transforme líderes em{" "}
+              <span className="relative">
+                <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">alta performance</span>
+                <span className="absolute bottom-1 left-0 w-full h-2 bg-gradient-to-r from-primary/20 to-amber-500/20 rounded-full"></span>
               </span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
