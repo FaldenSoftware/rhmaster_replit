@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { pool } from "./db";
 
 declare global {
   namespace Express {
@@ -67,7 +68,7 @@ export function setupAuth(app: Express) {
           WHERE username = $1 OR email = $1
         `;
         
-        const { pool } = require('./db');
+        // Pool já está importado acima
         const result = await pool.query(query, [username]);
         
         // Se não encontrou usuário
@@ -115,7 +116,6 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: number, done) => {
     try {
       // Acessar diretamente a tabela de usuários para obter dados atualizados
-      const { pool } = require('./db');
       const query = `
         SELECT * FROM users 
         WHERE id = $1
@@ -223,7 +223,7 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Formato de e-mail inválido" });
       }
 
-      const { pool } = require('./db');
+      // Pool já está importado acima
       
       // Verificar se o nome de usuário já existe
       const usernameQuery = `SELECT id FROM users WHERE username = $1`;
