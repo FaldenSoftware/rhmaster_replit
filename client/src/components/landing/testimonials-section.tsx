@@ -118,7 +118,7 @@ export function TestimonialsSection() {
           <div className="relative max-w-4xl mx-auto">
             <Quote className="absolute -top-2 -left-2 h-12 w-12 text-primary/10" />
             
-            <div className="md:text-center mb-8">
+            <div className="md:text-center mb-8 relative">
               <p className="text-xl md:text-2xl font-medium text-slate-800 leading-relaxed">
                 {featuredTestimonial.quote}
               </p>

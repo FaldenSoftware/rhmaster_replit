@@ -43,10 +43,10 @@ export function HeroSection() {
               o desenvolvimento das suas lideranças
             </h1>
             
-            <div className="relative h-8 mb-6 overflow-hidden">
-              <div className="flex flex-col gap-7 transition-transform duration-500" style={{ transform: `translateY(-${counter * 100}%)` }}>
+            <div className="relative h-8 mb-8 mt-4 overflow-hidden">
+              <div className="flex flex-col transition-transform duration-500" style={{ transform: `translateY(-${counter * 32}px)` }}>
                 {benefits.map((benefit, i) => (
-                  <p key={i} className="absolute inset-0 flex items-center text-lg md:text-xl text-muted-foreground font-medium">
+                  <p key={i} className="h-8 flex items-center text-lg md:text-xl text-muted-foreground font-medium">
                     <CheckCircle className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
                     {benefit}
                   </p>

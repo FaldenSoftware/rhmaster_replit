@@ -15,23 +15,28 @@ export function ExitPopup() {
   
   // Monitorar a intenção de saída do usuário
   useEffect(() => {
-    // Só mostrar o popup uma vez por sessão e depois de 5 segundos na página
+    // Verificar se o popup já foi mostrado e fechado nesta sessão
+    if (popupShown) {
+      return; // Não adicionar o detector de evento se já foi mostrado
+    }
+    
+    // Atrasar a adição do detector de evento para evitar disparos acidentais
     const timer = setTimeout(() => {
-      if (!popupShown) {
-        const handleMouseLeave = (e: MouseEvent) => {
-          // Detectar quando o mouse sai pela parte superior da página
-          if (e.clientY <= 5 && !exitIntent) {
-            setExitIntent(true);
-            setOpen(true);
-          }
-        };
-        
-        document.addEventListener('mouseleave', handleMouseLeave);
-        
-        return () => {
+      const handleMouseLeave = (e: MouseEvent) => {
+        // Detectar quando o mouse sai pela parte superior da página
+        if (e.clientY <= 5 && !exitIntent && !popupShown) {
+          setExitIntent(true);
+          setOpen(true);
+          // Após mostrar o popup, remover o detector de evento
           document.removeEventListener('mouseleave', handleMouseLeave);
-        };
-      }
+        }
+      };
+      
+      document.addEventListener('mouseleave', handleMouseLeave);
+      
+      return () => {
+        document.removeEventListener('mouseleave', handleMouseLeave);
+      };
     }, 5000);
     
     return () => clearTimeout(timer);
