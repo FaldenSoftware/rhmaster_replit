@@ -169,12 +169,13 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
       const randomSecret = Math.random().toString(36).substring(2, 10);
       const clientSecret = `seti_${timestamp}_secret_${randomSecret}`;
       
-      console.log(`Ativando plano ${planId} diretamente para o usuário ${user.id}`);
+      console.log(`Preparando plano ${planId} para o usuário ${user.id}`);
       
       try {
-        // Gerar IDs simulados
-        const stripeCustomerId = `cus_simulated_${Date.now()}`;
-        const stripeSubscriptionId = `sub_simulated_${Date.now()}`;
+        // Gerar IDs simulados - note que não estamos ativando a assinatura ainda
+        // Isso será feito quando o pagamento for confirmado
+        const stripeCustomerId = `cus_simulated_${timestamp}`;
+        const stripeSubscriptionId = `sub_simulated_${timestamp}`;
         
         // Tenta atualizar o customerId
         try {
@@ -186,26 +187,17 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
           // Continua mesmo com erro para tentar usar updateStripeInfo simplificado
         }
         
-        try {
-          // Tenta atualizar o subscriptionId separadamente se o schema mais amplo falhar
-          await storage.updateUserStripeInfo(user.id, { 
-            stripeSubscriptionId: stripeSubscriptionId 
-          });
-          console.log(`ID de assinatura Stripe atualizado para usuário ${user.id}: ${stripeSubscriptionId}`);
-        } catch (err) {
-          console.error("Erro ao atualizar ID de assinatura Stripe:", err);
-          // Continua mesmo se houver erro
-        }
+        // NÃO atualizamos o subscriptionId aqui, apenas após a confirmação do pagamento
         
         // Responde ao cliente
         res.json({
           clientSecret: clientSecret,
-          subscriptionId: stripeSubscriptionId,
-          // Adicionando informações extras para o frontend saber que é um pagamento simulado
+          subscriptionId: stripeSubscriptionId, // Para uso posterior
           simulated: true,
           planId: planId,
           amount: planPrices[planId as keyof typeof planPrices],
-          currency: 'brl'  // Adicionando moeda para o modo simulado
+          currency: 'brl',
+          timestamp: timestamp // Para referência futura
         });
       } catch (err) {
         console.error("Erro ao atualizar informações de pagamento do usuário:", err);
@@ -221,6 +213,73 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
   } catch (error) {
     console.error("Erro ao processar pedido de assinatura:", error);
     res.status(500).json({ message: "Erro ao processar pedido de assinatura" });
+  }
+});
+
+// Nova rota para confirmar um pagamento simulado
+router.post("/confirm-payment", isAuthenticated, isMentor, async (req, res) => {
+  try {
+    const user = req.user!;
+    const { subscriptionId, planId } = req.body;
+    
+    console.log(`Confirmando pagamento para assinatura ${subscriptionId}, plano ${planId}`);
+    
+    if (!subscriptionId || !planId) {
+      return res.status(400).json({ message: "ID da assinatura e plano são obrigatórios" });
+    }
+    
+    // Verificar se o plano é válido
+    if (!['basic', 'pro', 'enterprise'].includes(planId)) {
+      return res.status(400).json({ message: "Plano inválido" });
+    }
+    
+    try {
+      // Atualizar as informações de assinatura do usuário com base no plano
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: subscriptionId,
+        stripePlanId: planId,
+        subscriptionStatus: "active"
+      });
+      
+      console.log(`Assinatura ${subscriptionId} confirmada para usuário ${user.id}, plano ${planId}`);
+
+      // Para simulação, criamos uma "assinatura" que tem os campos necessários
+      // para a resposta da API de current-subscription
+      const now = new Date();
+      const periodEnd = new Date();
+      periodEnd.setMonth(periodEnd.getMonth() + 1); // 1 mês de validade
+      
+      // Obtendo número de clientes
+      const clients = await storage.getClientsByMentorId(user.id);
+      
+      // Determinando capacidade máxima de clientes
+      const maxClients = stripeService.getMaxClientsForPlan(planId as 'basic' | 'pro' | 'enterprise');
+      
+      // Respondemos com um objeto de assinatura similar ao que teria na API atual
+      res.json({
+        success: true,
+        subscription: {
+          id: subscriptionId,
+          plan: planId,
+          status: "active",
+          maxClients: maxClients,
+          clientCount: clients.length,
+          startDate: now.toISOString(),
+          autoRenew: true,
+          currentPeriodEnd: periodEnd.toISOString(),
+          daysRemaining: 30,
+        }
+      });
+    } catch (error) {
+      console.error("Erro ao confirmar pagamento:", error);
+      res.status(500).json({ 
+        message: "Erro ao confirmar pagamento", 
+        error: (error as Error).message 
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao processar confirmação de pagamento:", error);
+    res.status(500).json({ message: "Erro ao processar confirmação de pagamento" });
   }
 });
 

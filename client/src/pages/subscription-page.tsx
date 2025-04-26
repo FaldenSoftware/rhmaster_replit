@@ -79,7 +79,10 @@ export default function SubscriptionPage() {
     setSelectedPlan(null);
     
     // Recarrega a página para mostrar a assinatura atualizada
-    window.location.href = '/dashboard/settings';
+    // Redirecionamento direto com delay para deixar o usuário ver a mensagem de sucesso
+    setTimeout(() => {
+      window.location.href = '/dashboard/settings';
+    }, 1500);
   };
   
   // Manipulador para cancelamento do pagamento

@@ -52,6 +52,9 @@ export function SubscriptionFormContainer({
         }
 
         console.log('Iniciando solicitação de pagamento para plano:', planId);
+        
+        // Salva o plano selecionado no localStorage para recuperação posterior
+        window.localStorage.setItem('selectedPlan', planId);
 
         // Busca o client secret do Stripe para iniciar o pagamento
         const response = await apiRequest('POST', '/api/subscription/create-payment-intent', { 
@@ -231,18 +234,45 @@ function SubscriptionForm({ clientSecret, isSimulated = false, onSuccess, onCanc
         // Simula um delay para parecer real
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Pagamento simulado bem-sucedido
-        setPaymentSuccess(true);
-        toast({
-          title: 'Pagamento confirmado',
-          description: 'Sua assinatura foi ativada com sucesso! (Ambiente de desenvolvimento)',
-          variant: 'default',
-        });
+        try {
+          // Extrair da URL ou do data-* o ID da assinatura e plano
+          // Como não podemos acessar diretamente os dados internos do Stripe Elements
+          // vamos usar as propriedades que foram passadas para o componente
+          const paymentData = await apiRequest('POST', '/api/subscription/confirm-payment', {
+            subscriptionId: clientSecret.startsWith('seti_') ? clientSecret.split('_')[1] : 'sub_simulated_' + Date.now(),
+            planId: window.localStorage.getItem('selectedPlan') || 'basic'
+          });
         
-        if (onSuccess) {
-          setTimeout(() => {
-            onSuccess();
-          }, 1000);
+          if (!paymentData.ok) {
+            throw new Error('Falha ao confirmar pagamento no servidor');
+          }
+          
+          const result = await paymentData.json();
+          console.log('Confirmação de pagamento processada:', result);
+          
+          // Pagamento simulado bem-sucedido
+          setPaymentSuccess(true);
+          toast({
+            title: 'Pagamento confirmado',
+            description: 'Sua assinatura foi ativada com sucesso! (Ambiente de desenvolvimento)',
+            variant: 'default',
+          });
+          
+          if (onSuccess) {
+            setTimeout(() => {
+              onSuccess();
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Erro ao confirmar pagamento:', error);
+          setPaymentError('Ocorreu um erro ao confirmar seu pagamento. Por favor, tente novamente.');
+          toast({
+            title: 'Erro no processamento',
+            description: 'Falha ao registrar sua assinatura no sistema',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
         }
       } else {
         // Modo de produção - usa Stripe real
