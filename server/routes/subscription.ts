@@ -77,6 +77,145 @@ router.get("/trial-info", isAuthenticated, isMentor, async (req, res) => {
   }
 });
 
-// Rotas existentes...
+// Rota para obter informações da assinatura atual
+router.get("/current-subscription", isAuthenticated, isMentor, async (req, res) => {
+  try {
+    const user = req.user!;
+    
+    // Se o usuário não tem assinatura, retorna null
+    if (!user.stripeSubscriptionId) {
+      return res.json(null);
+    }
+    
+    try {
+      // Buscar detalhes da assinatura no Stripe
+      const stripeSubscription = await stripeService.getSubscription(user.stripeSubscriptionId);
+      
+      // Extrair o plano pela descrição do produto
+      let plan = 'basic';
+      const product = stripeSubscription.items.data[0]?.price.product;
+      if (typeof product !== 'string' && product) {
+        const productDetails = await stripeService.getProduct(product.id);
+        plan = productDetails.name.toLowerCase().includes('basic') 
+          ? 'basic' 
+          : productDetails.name.toLowerCase().includes('pro') 
+            ? 'pro' 
+            : 'enterprise';
+      }
+      
+      // Obter o número atual de clientes
+      const clients = await storage.getClientsByMentorId(user.id);
+      
+      // Determinar o número máximo de clientes com base no plano
+      const maxClients = stripeService.getMaxClientsForPlan(plan as 'basic' | 'pro' | 'enterprise');
+      
+      // Criar objeto de resposta
+      const subscription = {
+        id: stripeSubscription.id,
+        plan,
+        status: stripeSubscription.status,
+        maxClients,
+        clientCount: clients.length,
+        startDate: new Date(stripeSubscription.start_date * 1000).toISOString(),
+        autoRenew: !stripeSubscription.cancel_at_period_end,
+        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+        daysRemaining: Math.ceil((stripeSubscription.current_period_end * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+      };
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Erro ao buscar detalhes da assinatura:", error);
+      res.json(null); // Em caso de erro, retorna null em vez de um erro 500
+    }
+  } catch (error) {
+    console.error("Erro ao obter informações da assinatura:", error);
+    res.status(500).json({ message: "Erro ao obter informações da assinatura" });
+  }
+});
+
+// Rota para pegar ou criar uma intenção de pagamento para assinatura
+router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res) => {
+  try {
+    const user = req.user!;
+    const { planId } = req.body;
+    
+    if (!planId) {
+      return res.status(400).json({ message: "ID do plano é obrigatório" });
+    }
+    
+    // Verificar se o plano é válido
+    if (!['basic', 'pro', 'enterprise'].includes(planId)) {
+      return res.status(400).json({ message: "Plano inválido" });
+    }
+    
+    try {
+      // Criar ou atualizar assinatura
+      const result = await stripeService.createSubscription(user, planId as 'basic' | 'pro' | 'enterprise');
+      
+      res.json({
+        clientSecret: result.clientSecret,
+        subscriptionId: result.subscriptionId
+      });
+    } catch (error: any) {
+      console.error("Erro ao criar intenção de pagamento:", error);
+      res.status(500).json({ message: error.message || "Erro ao criar intenção de pagamento" });
+    }
+  } catch (error) {
+    console.error("Erro ao processar pedido de assinatura:", error);
+    res.status(500).json({ message: "Erro ao processar pedido de assinatura" });
+  }
+});
+
+// Rota para cancelar assinatura
+router.post("/cancel-subscription", isAuthenticated, isMentor, async (req, res) => {
+  try {
+    const user = req.user!;
+    const { cancelImmediate = false, reason = '' } = req.body;
+    
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ message: "Você não possui assinatura ativa" });
+    }
+    
+    try {
+      await stripeService.cancelSubscription(user.stripeSubscriptionId, !cancelImmediate);
+      
+      // Se for cancelar imediatamente, atualizar o banco
+      if (cancelImmediate) {
+        await storage.updateUserStripeInfo(user.id, { stripeSubscriptionId: null });
+      }
+      
+      res.json({ success: true, message: "Assinatura cancelada com sucesso" });
+    } catch (error: any) {
+      console.error("Erro ao cancelar assinatura:", error);
+      res.status(500).json({ message: error.message || "Erro ao cancelar assinatura" });
+    }
+  } catch (error) {
+    console.error("Erro ao processar cancelamento de assinatura:", error);
+    res.status(500).json({ message: "Erro ao processar cancelamento de assinatura" });
+  }
+});
+
+// Rota para reativar assinatura
+router.post("/reactivate-subscription", isAuthenticated, isMentor, async (req, res) => {
+  try {
+    const user = req.user!;
+    
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ message: "Você não possui assinatura para reativar" });
+    }
+    
+    try {
+      await stripeService.reactivateSubscription(user.stripeSubscriptionId);
+      res.json({ success: true, message: "Assinatura reativada com sucesso" });
+    } catch (error: any) {
+      console.error("Erro ao reativar assinatura:", error);
+      res.status(500).json({ message: error.message || "Erro ao reativar assinatura" });
+    }
+  } catch (error) {
+    console.error("Erro ao processar reativação de assinatura:", error);
+    res.status(500).json({ message: "Erro ao processar reativação de assinatura" });
+  }
+});
 
 export default router;
