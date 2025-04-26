@@ -173,17 +173,30 @@ export function SubscriptionManagement() {
   };
   
   const handleUpgradeSuccess = () => {
+    // Reseta os estados do formulário
     setShowPaymentForm(false);
     setShowUpgradeDialog(false);
     setSelectedPlan(null);
     
+    // Mostra um toast de sucesso
     toast({
-      title: 'Assinatura atualizada',
-      description: 'Seu plano foi atualizado com sucesso',
+      title: 'Assinatura ativada',
+      description: 'Seu plano foi ativado com sucesso!',
       variant: 'default',
     });
     
+    // Atualiza os dados da assinatura no cache
     queryClient.invalidateQueries({ queryKey: ['/api/subscription/current-subscription'] });
+
+    // Adicionar um pequeno atraso para permitir que a interface seja atualizada
+    setTimeout(() => {
+      // Verificar se estamos em uma nova assinatura ou atualização
+      const isUpgrade = !!subscription;
+      if (!isUpgrade) {
+        // Se for uma nova assinatura, forçar atualização para mostrar os detalhes
+        window.location.reload();
+      }
+    }, 1000);
   };
 
   // Exibe carregamento
@@ -276,61 +289,102 @@ export function SubscriptionManagement() {
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Plano</h3>
-                <p className="text-lg font-semibold">
-                  {subscription.plan === 'basic' && 'Básico'}
-                  {subscription.plan === 'pro' && 'Profissional'}
-                  {subscription.plan === 'enterprise' && 'Empresarial'}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Clientes</h3>
-                <p className="text-lg font-semibold">
-                  {subscription.clientCount} / {subscription.maxClients}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Data de Início
-                  </span>
-                </h3>
-                <p className="font-medium">
-                  {new Date(subscription.startDate).toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {subscription.cancelAtPeriodEnd ? 'Termina em' : 'Próxima cobrança'}
-                  </span>
-                </h3>
-                <p className="font-medium">
-                  {subscription.currentPeriodEnd 
-                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') 
-                    : subscription.endDate 
-                      ? new Date(subscription.endDate).toLocaleDateString('pt-BR')
-                      : 'Não disponível'}
+            {/* Plano atual com design melhorado */}
+            <div className="relative overflow-hidden rounded-lg border bg-gradient-to-b from-background to-muted/30 p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between gap-6">
+                {/* Informações do plano */}
+                <div className="flex-1">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Seu Plano Atual</h3>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-full bg-primary/10 p-1">
+                        <CheckCircle2 className="h-6 w-6 text-primary" />
+                      </div>
+                      <h2 className="text-2xl font-bold">
+                        {subscription.plan === 'basic' && 'Plano Básico'}
+                        {subscription.plan === 'pro' && 'Plano Profissional'}
+                        {subscription.plan === 'enterprise' && 'Plano Empresarial'}
+                      </h2>
+                    </div>
+                  </div>
                   
-                  {subscription.daysRemaining !== undefined && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      ({subscription.daysRemaining} dias restantes)
-                    </span>
-                  )}
-                </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-background/60 p-3 rounded-lg border">
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Data de Início
+                        </span>
+                      </h4>
+                      <p className="font-medium">
+                        {new Date(subscription.startDate).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-background/60 p-3 rounded-lg border">
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {subscription.cancelAtPeriodEnd ? 'Termina em' : 'Próxima cobrança'}
+                        </span>
+                      </h4>
+                      <p className="font-medium">
+                        {subscription.currentPeriodEnd 
+                          ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') 
+                          : subscription.endDate 
+                            ? new Date(subscription.endDate).toLocaleDateString('pt-BR')
+                            : 'Não disponível'}
+                      </p>
+                      {subscription.daysRemaining !== undefined && (
+                        <span className="text-xs text-muted-foreground">
+                          {subscription.daysRemaining} dias restantes
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Estatísticas do plano */}
+                <div className="flex flex-col justify-between bg-background/80 rounded-lg border p-4 min-w-[180px]">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Capacidade de Clientes</h3>
+                    <div className="flex items-center gap-2">
+                      <div className="text-2xl font-bold">{subscription.clientCount}/{subscription.maxClients}</div>
+                    </div>
+                    
+                    <div className="mt-2 h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full" 
+                        style={{ 
+                          width: `${Math.min(100, (subscription.clientCount / subscription.maxClients) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground mt-4">
+                    {subscription.maxClients - subscription.clientCount > 0 
+                      ? `Você pode adicionar mais ${subscription.maxClients - subscription.clientCount} clientes` 
+                      : 'Capacidade máxima atingida'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Badge de status */}
+              <div className="absolute top-3 right-3">
+                <Badge 
+                  variant={StatusLabels[subscription.status]?.variant || 'outline'}
+                  className="px-3 py-1"
+                >
+                  {StatusLabels[subscription.status]?.label || subscription.status}
+                </Badge>
               </div>
             </div>
             
+            {/* Alerta de cancelamento (se houver) */}
             {isCanceled && (
-              <Alert variant="default" className="bg-muted">
-                <AlertCircle className="h-4 w-4" />
+              <Alert variant="default" className="bg-muted border-amber-200">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
                 <AlertTitle>Cancelamento Agendado</AlertTitle>
                 <AlertDescription>
                   Sua assinatura está agendada para cancelamento 
