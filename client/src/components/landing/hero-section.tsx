@@ -1,70 +1,162 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Play, CheckCircle, Star, ShieldCheck, Clock, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export function HeroSection() {
+  const [counter, setCounter] = useState(0);
+  const benefits = ["Maior engajamento", "Redução de turnover", "Decisões data-driven", "Desenvolvimento acelerado"];
+
+  // Animação para trocar os benefícios a cada 3 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCounter((prev) => (prev + 1) % benefits.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [benefits.length]);
+
   return (
     <section 
       id="hero" 
-      className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-white overflow-hidden"
+      className="pt-24 pb-16 md:pt-28 md:pb-24 bg-gradient-to-b from-slate-50/80 to-white overflow-hidden"
     >
       <div className="container mx-auto px-4 md:px-6">
+        {/* Anúncio promocional */}
+        <div className="max-w-4xl mx-auto mb-12 text-center">
+          <Badge variant="outline" className="px-3 py-1 text-xs font-medium bg-background/95 backdrop-blur-sm border-primary/20 text-primary mb-4 inline-flex items-center gap-1.5">
+            <Star className="h-3.5 w-3.5 fill-primary" />
+            <span>NOVO</span>
+          </Badge>
+          <div className="text-sm md:text-base font-medium text-muted-foreground bg-gradient-to-r from-primary/90 to-secondary/90 bg-clip-text text-transparent">
+            Aumente a eficácia dos seus programas de liderança em até 73%
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 md:pr-12 mb-10 md:mb-0">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight mb-6">
-              Mentoria profissional elevada por{" "}
-              <span className="text-primary relative">
-                dados
-                <span className="absolute bottom-1 left-0 w-full h-2 bg-primary/20 rounded-full"></span>
-              </span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 mb-6 leading-[1.1]">
+              <span className="relative inline-block">
+                Potencialize
+                <div className="absolute -z-10 bottom-2 sm:bottom-1 left-0 w-full h-3 sm:h-4 bg-primary/15 rounded-full transform rotate-[-1deg]"></div>
+              </span>{" "}
+              o desenvolvimento das suas lideranças
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
-              RH Master é a plataforma inovadora que ajuda mentores a 
-              transformar seus líderes através de testes comportamentais, 
-              monitoramento de progresso e insights valiosos.
+            
+            <div className="relative h-8 mb-6 overflow-hidden">
+              <div className="flex flex-col gap-7 transition-transform duration-500" style={{ transform: `translateY(-${counter * 100}%)` }}>
+                {benefits.map((benefit, i) => (
+                  <p key={i} className="absolute inset-0 flex items-center text-lg md:text-xl text-muted-foreground font-medium">
+                    <CheckCircle className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
+                    {benefit}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+              Uma plataforma completa que une testes comportamentais, monitoramento 
+              inteligente e insights acionáveis para transformar mentores em catalisadores 
+              do sucesso organizacional.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/auth">
+            
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <Link href="/auth?tab=register">
                 <Button 
                   size="lg" 
-                  className="text-base"
+                  className="text-base relative overflow-hidden group shadow-lg"
                 >
-                  Começar Agora
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-300 transform group-hover:scale-105 -z-10"></span>
+                  Começar 14 dias grátis
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="text-base"
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Ver Demonstração
-              </Button>
+              
+              <Link href="#demo">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="text-base border-slate-300"
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Ver Demonstração
+                </Button>
+              </Link>
             </div>
             
-            <div className="mt-8 flex flex-col sm:flex-row items-center text-slate-500 text-sm">
-              <div className="flex -space-x-1 mb-3 sm:mb-0 sm:mr-4">
-                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">JD</div>
-                <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center shadow-sm">MR</div>
-                <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-sm">CA</div>
-                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">LF</div>
-                <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm">SP</div>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span>Sem necessidade de cartão</span>
               </div>
-              <span>+ de 300 mentores usam a plataforma</span>
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-primary" />
+                <span>Configuração em minutos</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span>ROI comprovado</span>
+              </div>
+            </div>
+            
+            <div className="mt-8 flex items-center">
+              <div className="flex -space-x-2 mr-4">
+                <img src="https://randomuser.me/api/portraits/women/79.jpg" alt="Usuário" className="w-8 h-8 rounded-full border-2 border-white object-cover" />
+                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Usuário" className="w-8 h-8 rounded-full border-2 border-white object-cover" />
+                <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Usuário" className="w-8 h-8 rounded-full border-2 border-white object-cover" />
+                <img src="https://randomuser.me/api/portraits/men/86.jpg" alt="Usuário" className="w-8 h-8 rounded-full border-2 border-white object-cover" />
+                <div className="w-8 h-8 rounded-full bg-primary/90 text-white flex items-center justify-center text-xs border-2 border-white">
+                  300+
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-secondary text-secondary" />
+                  ))}
+                </div>
+                <span className="text-sm font-medium">4.9/5 de satisfação</span>
+              </div>
             </div>
           </div>
           
           <div className="md:w-1/2 relative">
-            <div className="absolute -top-12 -left-12 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
-            <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-secondary/10 rounded-full blur-2xl"></div>
+            <div className="absolute -top-12 -left-12 w-40 h-40 bg-primary/10 rounded-full blur-3xl opacity-80"></div>
+            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-secondary/10 rounded-full blur-3xl opacity-80"></div>
             
-            <div className="rounded-xl bg-white shadow-xl p-2 border border-slate-100 relative z-10">
-              <img 
-                src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2184&q=80" 
-                alt="Mentoria em ação" 
-                className="rounded-lg h-full w-full object-cover"
-              />
+            {/* Dashboard mock */}
+            <div className="relative z-10">
+              <div className="absolute -top-10 -left-10 md:-left-6 md:-top-6 bg-white rounded-lg shadow-xl p-4 border border-slate-200 w-32 md:w-44 animate-float">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <p className="text-xs font-medium">Taxa de conclusão</p>
+                </div>
+                <p className="text-xl md:text-2xl font-bold mt-1">94%</p>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2">
+                  <div className="h-full w-[94%] bg-green-500 rounded-full"></div>
+                </div>
+              </div>
+              
+              <div className="absolute -bottom-10 -right-6 md:-right-8 md:-bottom-6 bg-white rounded-lg shadow-xl p-4 border border-slate-200 w-40 md:w-52 animate-float-slow">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  <p className="text-xs font-medium">Engajamento semanal</p>
+                </div>
+                <div className="flex gap-1 justify-between items-end h-16">
+                  {[40, 65, 55, 80, 70, 85, 90].map((h, i) => (
+                    <div key={i} className="w-full bg-primary/20 rounded-sm" style={{ height: `${h}%` }}></div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="rounded-xl bg-white shadow-xl p-2 border border-slate-200 relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1674&q=80" 
+                  alt="Dashboard RH Master" 
+                  className="rounded-lg h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             </div>
           </div>
         </div>

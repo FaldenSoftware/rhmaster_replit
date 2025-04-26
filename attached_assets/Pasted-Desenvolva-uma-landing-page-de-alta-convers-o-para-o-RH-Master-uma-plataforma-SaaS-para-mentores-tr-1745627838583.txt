@@ -1,0 +1,61 @@
+Desenvolva uma landing page de alta conversão para o RH Master, uma plataforma SaaS para mentores treinarem seus líderes/clientes. A página deve ser otimizada para converter visitantes em assinantes, com foco em design persuasivo e clareza na comunicação da proposta de valor.
+Especificações técnicas:
+- Framework: React com Vite
+- Componentes: ShadcnUI
+- Responsividade: Mobile-first
+- Performance: Otimizada para Core Web Vitals
+- SEO: Estrutura semântica e meta tags otimizadas
+Estrutura da página:
+1. Header:
+   - Logo do RH Master
+   - Menu de navegação simplificado
+   - CTAs primário e secundário
+   - Opção de login
+2. Hero Section:
+   - Headline principal focada no benefício-chave
+   - Subheadline explicativa
+   - CTA destacado para período gratuito
+   - Imagem/animação do dashboard
+   - Elemento de social proof
+3. Benefícios Principais:
+   - 3-4 cards com ícones e descrições concisas
+   - Foco nos diferenciais da plataforma
+4. Demonstração Visual:
+   - Vídeo ou slider interativo
+   - Destaques das principais funcionalidades
+5. Funcionalidades Detalhadas:
+   - Seções para cada grupo de funcionalidades
+   - Imagens ilustrativas
+   - Descrições focadas em benefícios
+6. Depoimentos:
+   - 3-5 depoimentos com fotos e nomes reais
+   - Resultados quantificáveis quando possível
+7. Comparativo de Planos:
+   - Tabela clara dos três planos
+   - Destaque para o plano Profissional
+   - CTAs específicos para cada plano
+8. Garantia e Segurança:
+   - Selos de garantia e segurança
+   - Menção à LGPD e privacidade
+9. FAQ:
+   - 6-8 perguntas estratégicas
+   - Sistema de acordeão
+10. CTA Final:
+    - Seção dedicada com fundo contrastante
+    - CTA grande e destacado
+11. Footer:
+    - Links importantes
+    - Contato e redes sociais
+Elementos de conversão a implementar:
+- CTAs estrategicamente posicionados com cores contrastantes
+- Social proof em múltiplos formatos
+- Elementos de escassez e urgência
+- Formulário de cadastro simplificado
+- Pop-up de saída com oferta especial
+Otimizações:
+- Lazy loading para conteúdo abaixo da dobra
+- Compressão de imagens
+- Pré-carregamento de recursos críticos
+- Implementação de analytics para tracking de conversão
+- Estrutura preparada para A/B testing
+Garanta que a página comunique claramente o valor único da plataforma e direcione os visitantes para a ação desejada (cadastro para período de teste gratuito).
