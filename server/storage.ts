@@ -5,7 +5,7 @@ import {
   suggestions, type Suggestion, type InsertSuggestion 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNull, lte, gte } from "drizzle-orm";
+import { eq, and, desc, isNull, lte, gte, or } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
@@ -622,16 +622,18 @@ export class DatabaseStorage implements IStorage {
   async getUserSuggestions(userId: number, assistantType: string): Promise<Suggestion[]> {
     const now = new Date();
     
-    return await db.select().from(suggestions).where(and(
-      eq(suggestions.userId, userId),
-      eq(suggestions.assistantType, assistantType),
-      // Verificar se a sugestão não está expirada 
-      // (ou não tem data de expiração)
-      or(
-        isNull(suggestions.expiresAt),
-        gte(suggestions.expiresAt, now)
-      )
-    )).orderBy(desc(suggestions.createdAt));
+    // Primeiro, selecionar por userId e assistantType
+    const userSuggestions = await db.select()
+      .from(suggestions)
+      .where(eq(suggestions.userId, userId))
+      .where(eq(suggestions.assistantType, assistantType))
+      .orderBy(desc(suggestions.createdAt));
+    
+    // Depois filtrar as sugestões expiradas
+    return userSuggestions.filter(suggestion => {
+      // Se não tiver data de expiração ou se a data de expiração for maior que agora, manter
+      return !suggestion.expiresAt || suggestion.expiresAt > now;
+    });
   }
 
   async markSuggestionAsRead(id: number): Promise<Suggestion | undefined> {
