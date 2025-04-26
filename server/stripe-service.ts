@@ -14,17 +14,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 // Mapeia os IDs dos planos para preços e limites
 const PLANS = {
   basic: {
-    priceId: process.env.STRIPE_BASIC_PRICE_ID || 'price_basic', // Substituir pelos IDs reais do Stripe
+    priceId: process.env.STRIPE_BASIC_PRICE_ID || 'price_1POJexI0yI2TzLGJjfU89ksf', // ID real do produto Basic no Stripe
     maxClients: 5,
     price: 49.90
   },
   pro: {
-    priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_1POJf8I0yI2TzLGJ9fWkdvdC', // ID real do produto Pro no Stripe
     maxClients: 20,
     price: 99.90
   },
   enterprise: {
-    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
+    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_1POJfWI0yI2TzLGJhAOrbFj4', // ID real do produto Enterprise no Stripe
     maxClients: 50,
     price: 199.90
   }
@@ -394,8 +394,9 @@ export const stripeService = {
 
         // Se a fatura foi paga, atualiza o status da assinatura para ativo
         if (invoice.status === 'paid' && subscription.status === 'incomplete') {
-          await storage.updateUserSubscription(user.id, {
-            status: 'active'
+          // Nossa interface não tem um método updateUserSubscription, então usamos updateUserStripeInfo
+          await storage.updateUserStripeInfo(user.id, {
+            stripeSubscriptionId: subscription.id
           });
         }
       }
