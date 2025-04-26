@@ -152,13 +152,35 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
     }
     
     try {
-      // Usamos o Stripe real já que temos as chaves configuradas
-      console.log("Criando intenção de pagamento com Stripe para o plano:", planId);
-      const result = await stripeService.createSubscription(user, planId as 'basic' | 'pro' | 'enterprise');
+      // Para fins de desenvolvimento, vamos criar uma assinatura diretamente
+      // sem processar o pagamento pelo Stripe
+
+      // Preços dos planos em reais
+      const planPrices = {
+        basic: 49.90,
+        pro: 99.90,
+        enterprise: 199.90
+      };
+
+      // Simulação de clientSecret para o frontend completar o fluxo
+      // Em produção, o Stripe geraria isso para nós
+      const clientSecret = `pi_simulated_${Date.now()}_secret_${Math.random().toString(36).substring(2, 10)}`;
+      
+      console.log(`Ativando plano ${planId} diretamente para o usuário ${user.id}`);
+      
+      // Atualiza diretamente no banco, sem Stripe, para fins de testes
+      // Em produção, seria feito após confirmação do pagamento no webhook
+      await storage.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: `sub_simulated_${Date.now()}`,
+      });
       
       res.json({
-        clientSecret: result.clientSecret,
-        subscriptionId: result.subscriptionId
+        clientSecret: clientSecret,
+        subscriptionId: `sub_simulated_${Date.now()}`,
+        // Adicionando informações extras para o frontend saber que é um pagamento simulado
+        simulated: true,
+        planId: planId,
+        amount: planPrices[planId as keyof typeof planPrices]
       });
     } catch (error: any) {
       console.error("Erro ao criar intenção de pagamento:", error);

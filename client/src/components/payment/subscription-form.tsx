@@ -176,37 +176,60 @@ function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFor
     }
 
     try {
-      // Confirma o pagamento com o Stripe
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-        }
-      );
-
-      if (error) {
-        // Exibe erro em caso de falha no pagamento
-        setPaymentError(error.message || 'Erro ao processar o pagamento');
-        toast({
-          title: 'Falha no pagamento',
-          description: error.message || 'Ocorreu um erro ao processar seu pagamento',
-          variant: 'destructive',
-        });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Pagamento bem-sucedido
+      // Verifica se é um clientSecret simulado (para desenvolvimento)
+      if (clientSecret.startsWith('pi_simulated_')) {
+        console.log('Processando pagamento simulado para desenvolvimento');
+        
+        // Simula um delay para parecer real
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Pagamento simulado bem-sucedido
         setPaymentSuccess(true);
         toast({
           title: 'Pagamento confirmado',
-          description: 'Sua assinatura foi ativada com sucesso!',
+          description: 'Sua assinatura foi ativada com sucesso! (Simulação de desenvolvimento)',
           variant: 'default',
         });
         
         if (onSuccess) {
           setTimeout(() => {
             onSuccess();
-          }, 1500);
+          }, 1000);
+        }
+      } else {
+        // Modo de produção - usa Stripe real
+        // Confirma o pagamento com o Stripe
+        const { error, paymentIntent } = await stripe.confirmCardPayment(
+          clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+            },
+          }
+        );
+
+        if (error) {
+          // Exibe erro em caso de falha no pagamento
+          setPaymentError(error.message || 'Erro ao processar o pagamento');
+          toast({
+            title: 'Falha no pagamento',
+            description: error.message || 'Ocorreu um erro ao processar seu pagamento',
+            variant: 'destructive',
+          });
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+          // Pagamento bem-sucedido
+          setPaymentSuccess(true);
+          toast({
+            title: 'Pagamento confirmado',
+            description: 'Sua assinatura foi ativada com sucesso!',
+            variant: 'default',
+          });
+          
+          if (onSuccess) {
+            setTimeout(() => {
+              onSuccess();
+            }, 1500);
+          }
         }
       }
     } catch (err: any) {
