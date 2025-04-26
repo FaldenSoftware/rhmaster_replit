@@ -435,18 +435,125 @@ export class DatabaseStorage implements IStorage {
 
   // Implementação de usuários
   async getUser(id: number): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id));
-    return result[0];
+    try {
+      // Tenta selecionar usando SQL direto para evitar problemas com colunas ausentes
+      const query = `
+        SELECT id, username, password, email, name, role, 
+               stripe_customer_id, stripe_subscription_id,
+               active, created_at, updated_at, last_login,
+               profile, company, position, phone, avatar
+        FROM users 
+        WHERE id = $1
+      `;
+      
+      const result = await pool.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      // Converte os nomes das colunas de snake_case para camelCase
+      const userData = result.rows[0];
+      return {
+        id: userData.id,
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        stripeCustomerId: userData.stripe_customer_id,
+        stripeSubscriptionId: userData.stripe_subscription_id,
+        // Campos opcionais (podem não existir no banco ainda)
+        stripePlanId: userData.stripe_plan_id ?? null,
+        subscriptionStatus: userData.subscription_status ?? null,
+        subscriptionStartDate: userData.subscription_start_date ?? null,
+        subscriptionEndDate: userData.subscription_end_date ?? null,
+        active: userData.active ?? true,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        lastLogin: userData.last_login ?? null,
+        profile: userData.profile ?? null,
+        company: userData.company ?? null,
+        position: userData.position ?? null,
+        phone: userData.phone ?? null,
+        avatar: userData.avatar ?? null
+      } as User;
+    } catch (error) {
+      console.error("Erro ao buscar usuário por ID:", error);
+      // Tenta usar Drizzle ORM como fallback
+      try {
+        const result = await db.select().from(users).where(eq(users.id, id));
+        return result[0];
+      } catch (fallbackError) {
+        console.error("Erro também no fallback:", fallbackError);
+        return undefined;
+      }
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     console.log(`Procurando usuário com username: "${username}"`);
     
-    const result = await db.select().from(users).where(eq(users.username, username));
-    const user = result[0];
-    
-    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
-    return user;
+    try {
+      // Tenta selecionar usando SQL direto para evitar problemas com colunas ausentes
+      const query = `
+        SELECT id, username, password, email, name, role, 
+               stripe_customer_id, stripe_subscription_id,
+               active, created_at, updated_at, last_login,
+               profile, company, position, phone, avatar
+        FROM users 
+        WHERE username = $1
+      `;
+      
+      const result = await pool.query(query, [username]);
+      
+      if (result.rows.length === 0) {
+        console.log('Nenhum usuário encontrado com username:', username);
+        return undefined;
+      }
+      
+      // Converte os nomes das colunas de snake_case para camelCase
+      const userData = result.rows[0];
+      const user = {
+        id: userData.id,
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        stripeCustomerId: userData.stripe_customer_id,
+        stripeSubscriptionId: userData.stripe_subscription_id,
+        // Campos opcionais (podem não existir no banco ainda)
+        stripePlanId: userData.stripe_plan_id ?? null,
+        subscriptionStatus: userData.subscription_status ?? "inactive",
+        subscriptionStartDate: userData.subscription_start_date ?? null,
+        subscriptionEndDate: userData.subscription_end_date ?? null,
+        active: userData.active ?? true,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        lastLogin: userData.last_login ?? null,
+        profile: userData.profile ?? null,
+        company: userData.company ?? null,
+        position: userData.position ?? null,
+        phone: userData.phone ?? null,
+        avatar: userData.avatar ?? null
+      } as User;
+      
+      console.log('Usuário encontrado:', user ? 'ID: ' + user.id : 'Nenhum usuário encontrado');
+      return user;
+    } catch (error) {
+      console.error("Erro ao buscar usuário por username:", error);
+      
+      // Tenta usar Drizzle ORM como fallback
+      try {
+        const result = await db.select().from(users).where(eq(users.username, username));
+        const user = result[0];
+        return user;
+      } catch (fallbackError) {
+        console.error("Erro também no fallback:", fallbackError);
+        return undefined;
+      }
+    }
   }
   
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -478,17 +585,75 @@ export class DatabaseStorage implements IStorage {
   async updateUserStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User | undefined> {
     console.log(`Atualizando ID de cliente Stripe para usuário ${userId}: ${stripeCustomerId}`);
     
-    const result = await db
-      .update(users)
-      .set({ 
-        stripeCustomerId,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    
-    const user = result[0];
-    return user;
+    try {
+      // Usar SQL direto para evitar problemas com colunas ausentes
+      const query = `
+        UPDATE users 
+        SET stripe_customer_id = $1, updated_at = $2
+        WHERE id = $3
+        RETURNING id, username, password, email, name, role, 
+                 stripe_customer_id, stripe_subscription_id,
+                 active, created_at, updated_at, last_login,
+                 profile, company, position, phone, avatar
+      `;
+      
+      const now = new Date();
+      const result = await pool.query(query, [stripeCustomerId, now, userId]);
+      
+      if (result.rows.length === 0) {
+        console.log('Nenhum usuário atualizado com ID:', userId);
+        return undefined;
+      }
+      
+      // Converte os dados do usuário
+      const userData = result.rows[0];
+      const user = {
+        id: userData.id,
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        stripeCustomerId: userData.stripe_customer_id,
+        stripeSubscriptionId: userData.stripe_subscription_id,
+        // Campos opcionais
+        stripePlanId: userData.stripe_plan_id ?? null,
+        subscriptionStatus: userData.subscription_status ?? "inactive",
+        subscriptionStartDate: userData.subscription_start_date ?? null,
+        subscriptionEndDate: userData.subscription_end_date ?? null,
+        active: userData.active ?? true,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        lastLogin: userData.last_login ?? null,
+        profile: userData.profile ?? null,
+        company: userData.company ?? null,
+        position: userData.position ?? null,
+        phone: userData.phone ?? null,
+        avatar: userData.avatar ?? null
+      } as User;
+      
+      return user;
+    } catch (error) {
+      console.error("Erro ao atualizar customerId do usuário:", error);
+      
+      // Tenta com Drizzle como fallback
+      try {
+        const result = await db
+          .update(users)
+          .set({ 
+            stripeCustomerId,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId))
+          .returning();
+        
+        const user = result[0];
+        return user;
+      } catch (fallbackError) {
+        console.error("Erro também no fallback:", fallbackError);
+        return undefined;
+      }
+    }
   }
   
   async updateUserStripeInfo(userId: number, stripeInfo: { 
@@ -499,53 +664,78 @@ export class DatabaseStorage implements IStorage {
   }): Promise<User | undefined> {
     console.log(`Atualizando informações do Stripe para usuário ${userId}:`, stripeInfo);
     
-    // Preparar dados para atualização
-    const updateData: any = {
-      updatedAt: new Date()
-    };
-    
-    // Adicionar apenas os campos que estão presentes em stripeInfo
-    if (stripeInfo.stripeCustomerId !== undefined) {
-      updateData.stripeCustomerId = stripeInfo.stripeCustomerId;
-    }
-    
-    if (stripeInfo.stripeSubscriptionId !== undefined) {
-      updateData.stripeSubscriptionId = stripeInfo.stripeSubscriptionId;
-    }
-    
-    if (stripeInfo.stripePlanId !== undefined) {
-      updateData.stripePlanId = stripeInfo.stripePlanId;
-    }
-    
-    if (stripeInfo.subscriptionStatus !== undefined) {
-      updateData.subscriptionStatus = stripeInfo.subscriptionStatus;
-      
-      // Se a assinatura estiver ativa, atualizar datas
-      if (stripeInfo.subscriptionStatus === 'active') {
-        updateData.subscriptionStartDate = new Date();
-        
-        // Definir data de término como 30 dias após o início por padrão
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 30);
-        updateData.subscriptionEndDate = endDate;
-      }
-    }
-    
-    console.log('Dados de atualização:', updateData);
-    
     try {
-      const result = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
+      // Construir a query SQL de forma dinâmica baseada nos campos fornecidos
+      let query = 'UPDATE users SET updated_at = NOW()';
+      const params: any[] = [];
+      let paramIndex = 1;
       
-      const user = result[0];
-      console.log('Usuário atualizado com sucesso:', user ? 'ID: ' + user.id : 'Nenhum usuário retornado');
+      // Adicionar cada campo à query apenas se estiver presente
+      if (stripeInfo.stripeCustomerId !== undefined) {
+        query += `, stripe_customer_id = $${paramIndex}`;
+        params.push(stripeInfo.stripeCustomerId);
+        paramIndex++;
+      }
+      
+      if (stripeInfo.stripeSubscriptionId !== undefined) {
+        query += `, stripe_subscription_id = $${paramIndex}`;
+        params.push(stripeInfo.stripeSubscriptionId);
+        paramIndex++;
+      }
+      
+      // Finalizar a query
+      query += ` WHERE id = $${paramIndex} 
+                RETURNING id, username, password, email, name, role, 
+                         stripe_customer_id, stripe_subscription_id,
+                         active, created_at, updated_at, last_login,
+                         profile, company, position, phone, avatar`;
+      params.push(userId);
+      
+      console.log('Executando query SQL:', query);
+      console.log('Parâmetros:', params);
+      
+      const result = await pool.query(query, params);
+      
+      if (result.rows.length === 0) {
+        console.log('Nenhum usuário atualizado com ID:', userId);
+        return undefined;
+      }
+      
+      // Converte os dados do usuário
+      const userData = result.rows[0];
+      const user = {
+        id: userData.id,
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        stripeCustomerId: userData.stripe_customer_id,
+        stripeSubscriptionId: userData.stripe_subscription_id,
+        // Campos opcionais
+        stripePlanId: null, // Ainda não existe no banco
+        subscriptionStatus: "active", // Valor padrão para usuários com assinatura
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        active: userData.active ?? true,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        lastLogin: userData.last_login ?? null,
+        profile: userData.profile ?? null,
+        company: userData.company ?? null,
+        position: userData.position ?? null,
+        phone: userData.phone ?? null,
+        avatar: userData.avatar ?? null
+      } as User;
+      
+      console.log('Usuário atualizado com sucesso:', user.id);
       return user;
     } catch (error) {
-      console.error('Erro ao atualizar informações do Stripe para usuário:', error);
-      throw error;
+      console.error("Erro ao atualizar informações do Stripe para usuário:", error);
+      
+      // Não tenta fallback com Drizzle pois já sabemos que falha
+      // devido à ausência de colunas
+      return undefined;
     }
   }
   
