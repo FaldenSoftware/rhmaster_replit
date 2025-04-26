@@ -7,6 +7,7 @@ import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
 import SettingsPage from "@/pages/settings-page";
 import SubscriptionPage from "@/pages/subscription-page";
+import HelpPage from "@/pages/help-page";
 import MentorDashboard from "@/pages/mentor-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import TestAssignmentKanban from "@/pages/mentor/test-assignment-kanban";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/subscription" component={SubscriptionPage} />
+      <ProtectedRoute path="/help" component={HelpPage} />
       
       {/* Dashboard do mentor e sub-rotas */}
       <ProtectedRoute path="/mentor-dashboard" component={MentorDashboard} />

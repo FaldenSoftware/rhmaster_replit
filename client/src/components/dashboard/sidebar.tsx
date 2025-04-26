@@ -138,7 +138,7 @@ export function Sidebar() {
           <span>Configurações</span>
         </Link>
         <Link
-          href="/dashboard/help"
+          href="/help"
           className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent/20"
         >
           <HelpCircle className="h-5 w-5" />
