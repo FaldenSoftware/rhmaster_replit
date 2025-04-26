@@ -56,60 +56,6 @@ export default function MentorDashboard() {
         onValueChange={handleTabChange}
         className="space-y-6"
       >
-        <div className="border-b">
-          <div className="container mx-auto">
-            <TabsList className="flex h-10 items-center justify-start p-0 bg-transparent w-full overflow-x-auto">
-              <TabsTrigger
-                value="dashboard"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger
-                value="clients"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Clientes
-              </TabsTrigger>
-              <TabsTrigger
-                value="tests"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Testes
-              </TabsTrigger>
-              <TabsTrigger
-                value="invites"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Convites
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger
-                value="gamification"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Gamificação
-              </TabsTrigger>
-              <TabsTrigger
-                value="profile"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Meu Perfil
-              </TabsTrigger>
-              <TabsTrigger
-                value="settings"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                Configurações
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
 
         <TabsContent value="dashboard" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

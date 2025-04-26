@@ -68,7 +68,7 @@ export function PricingSection() {
   ];
 
   // Função para renderizar um plano
-  const renderPlan = (plan, index) => {
+  const renderPlan = (plan: typeof plans[0], index: number) => {
     const price = annual 
       ? Math.round(plan.monthlyPrice * annualDiscount)
       : plan.monthlyPrice;
