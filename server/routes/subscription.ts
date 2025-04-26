@@ -164,7 +164,10 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
 
       // Simulação de clientSecret para o frontend completar o fluxo
       // Em produção, o Stripe geraria isso para nós
-      const clientSecret = `pi_simulated_${Date.now()}_secret_${Math.random().toString(36).substring(2, 10)}`;
+      // Formato correto que não causa erro no Stripe Elements: seti_1234_secret_5678
+      const timestamp = Date.now();
+      const randomSecret = Math.random().toString(36).substring(2, 10);
+      const clientSecret = `seti_${timestamp}_secret_${randomSecret}`;
       
       console.log(`Ativando plano ${planId} diretamente para o usuário ${user.id}`);
       

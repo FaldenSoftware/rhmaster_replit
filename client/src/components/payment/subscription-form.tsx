@@ -159,21 +159,40 @@ export function SubscriptionFormContainer({
     return null;
   }
 
+  // Verificar se é um cliente simulado para tratar de forma diferente
+  const isSimulated = paymentData?.simulated === true;
+  
+  // Opções para o componente Elements
+  const options: any = {
+    clientSecret,
+    // Se for simulado, estamos em modo de desenvolvimento, então usamos options diferentes
+    ...(isSimulated ? { 
+      mode: 'setup' as const,
+      appearance: { theme: 'stripe' }
+    } : {})
+  };
+  
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <SubscriptionForm clientSecret={clientSecret} onSuccess={onSuccess} onCancel={onCancel} />
+    <Elements stripe={stripePromise} options={options}>
+      <SubscriptionForm 
+        clientSecret={clientSecret}
+        isSimulated={isSimulated}
+        onSuccess={onSuccess} 
+        onCancel={onCancel} 
+      />
     </Elements>
   );
 }
 
 type SubscriptionFormProps = {
   clientSecret: string;
+  isSimulated?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
 };
 
 // Formulário de pagamento
-function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFormProps) {
+function SubscriptionForm({ clientSecret, isSimulated = false, onSuccess, onCancel }: SubscriptionFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -203,8 +222,8 @@ function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFor
     }
 
     try {
-      // Verifica se é um clientSecret simulado (para desenvolvimento)
-      if (clientSecret.startsWith('pi_simulated_')) {
+      // Verifica se é um pagamento simulado (para desenvolvimento)
+      if (isSimulated || clientSecret.startsWith('seti_') || clientSecret.startsWith('pi_simulated_')) {
         console.log('Processando pagamento simulado para desenvolvimento');
         
         // Simula um delay para parecer real
@@ -214,7 +233,7 @@ function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFor
         setPaymentSuccess(true);
         toast({
           title: 'Pagamento confirmado',
-          description: 'Sua assinatura foi ativada com sucesso! (Simulação de desenvolvimento)',
+          description: 'Sua assinatura foi ativada com sucesso! (Ambiente de desenvolvimento)',
           variant: 'default',
         });
         
@@ -225,38 +244,48 @@ function SubscriptionForm({ clientSecret, onSuccess, onCancel }: SubscriptionFor
         }
       } else {
         // Modo de produção - usa Stripe real
-        // Confirma o pagamento com o Stripe
-        const { error, paymentIntent } = await stripe.confirmCardPayment(
-          clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-            },
-          }
-        );
+        try {
+          // Confirma o pagamento com o Stripe
+          const { error, paymentIntent } = await stripe.confirmCardPayment(
+            clientSecret,
+            {
+              payment_method: {
+                card: cardElement,
+              },
+            }
+          );
 
-        if (error) {
-          // Exibe erro em caso de falha no pagamento
-          setPaymentError(error.message || 'Erro ao processar o pagamento');
+          if (error) {
+            // Exibe erro em caso de falha no pagamento
+            setPaymentError(error.message || 'Erro ao processar o pagamento');
+            toast({
+              title: 'Falha no pagamento',
+              description: error.message || 'Ocorreu um erro ao processar seu pagamento',
+              variant: 'destructive',
+            });
+          } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+            // Pagamento bem-sucedido
+            setPaymentSuccess(true);
+            toast({
+              title: 'Pagamento confirmado',
+              description: 'Sua assinatura foi ativada com sucesso!',
+              variant: 'default',
+            });
+            
+            if (onSuccess) {
+              setTimeout(() => {
+                onSuccess();
+              }, 1500);
+            }
+          }
+        } catch (stripeError) {
+          console.error('Erro específico do Stripe:', stripeError);
+          setPaymentError('Erro na comunicação com o Stripe. Por favor tente novamente.');
           toast({
-            title: 'Falha no pagamento',
-            description: error.message || 'Ocorreu um erro ao processar seu pagamento',
+            title: 'Erro no processamento',
+            description: 'Ocorreu um erro na comunicação com o gateway de pagamento',
             variant: 'destructive',
           });
-        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-          // Pagamento bem-sucedido
-          setPaymentSuccess(true);
-          toast({
-            title: 'Pagamento confirmado',
-            description: 'Sua assinatura foi ativada com sucesso!',
-            variant: 'default',
-          });
-          
-          if (onSuccess) {
-            setTimeout(() => {
-              onSuccess();
-            }, 1500);
-          }
         }
       }
     } catch (err: any) {
