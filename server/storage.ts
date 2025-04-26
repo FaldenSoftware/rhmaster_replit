@@ -569,16 +569,18 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Erro ao buscar usuário por email, tentando SQL direto:", error);
       
-      // Fallback: usar SQL direto com apenas colunas conhecidas
+      // Fallback: usar SQL direto com pool.query em vez de db.execute
       try {
-        const result = await db.execute(`
+        const query = `
           SELECT id, username, password, email, name, role, active, 
                  created_at, updated_at, last_login, profile, company, 
                  position, phone, avatar, stripe_customer_id, 
                  stripe_subscription_id
           FROM users 
           WHERE email = $1
-        `, [email]);
+        `;
+        
+        const result = await pool.query(query, [email]);
         
         if (result.rows.length === 0) {
           console.log('Nenhum usuário encontrado no fallback');
