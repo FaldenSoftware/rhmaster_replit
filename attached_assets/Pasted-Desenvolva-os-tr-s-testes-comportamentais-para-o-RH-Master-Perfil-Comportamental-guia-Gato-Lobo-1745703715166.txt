@@ -1,0 +1,47 @@
+Desenvolva os três testes comportamentais para o RH Master: Perfil Comportamental (Águia, Gato, Lobo e Tubarão), Teste de Inteligência Emocional e Teste de Eneagrama. Cada teste deve ter uma interface intuitiva e um algoritmo de avaliação preciso.
+Especificações técnicas:
+- Frontend: React com ShadcnUI
+- Armazenamento de respostas: PostgreSQL
+- Algoritmos de avaliação: JavaScript/Node.js
+- Visualização de resultados: Gráficos com Recharts
+1. Teste de Perfil Comportamental:
+   - 24 questões de múltipla escolha
+   - 4 opções por questão (cada uma representando um perfil)
+   - Algoritmo para calcular percentuais de cada perfil
+   - Identificação de perfil predominante e secundário
+   - Visualização em gráfico radar dos quatro perfis
+   - Interpretação detalhada de cada perfil
+   - Recomendações baseadas no perfil predominante
+2. Teste de Inteligência Emocional:
+   - 30 questões situacionais
+   - Escala Likert de 5 pontos
+   - Avaliação de 5 dimensões (autoconsciência, autocontrole, automotivação, empatia, habilidades sociais)
+   - Pontuação de 0-100 para cada dimensão
+   - Gráfico radar para visualização comparativa
+   - Interpretação de pontos fortes e áreas de desenvolvimento
+   - Sugestões práticas para melhorar cada dimensão
+3. Teste de Eneagrama:
+   - 36 pares de afirmações para escolha forçada
+   - Algoritmo para identificação do tipo principal (1-9)
+   - Identificação de asas (tipos adjacentes)
+   - Visualização do tipo principal e influências secundárias
+   - Descrição detalhada do tipo identificado
+   - Informações sobre direções de integração e desintegração
+   - Recomendações de desenvolvimento pessoal
+Funcionalidades comuns a todos os testes:
+- Barra de progresso
+- Salvamento automático de respostas
+- Opção de pausar e continuar depois
+- Validação para garantir que todas as questões sejam respondidas
+- Cálculo de tempo de conclusão
+- Visualização imediata de resultados após conclusão
+- Opção de compartilhar resultados com o mentor
+- Histórico de resultados anteriores
+Interface do usuário:
+- Design limpo e focado na tarefa
+- Instruções claras no início de cada teste
+- Feedback visual ao selecionar respostas
+- Transições suaves entre questões
+- Resultados visualmente atrativos e informativos
+- Experiência responsiva em todos os dispositivos
+Implemente também a lógica para pontuação no sistema de gamificação após a conclusão de cada teste.

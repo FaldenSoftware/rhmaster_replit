@@ -22,7 +22,17 @@ import { relations } from "drizzle-orm";
 export const userRoleEnum = pgEnum('user_role', ['mentor', 'client', 'admin']);
 export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'basic', 'pro', 'enterprise']);
 export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'expired']);
-export const testTypeEnum = pgEnum('test_type', ['behavior', 'emotional_intelligence', 'leadership', 'enneagram', 'communication', 'custom']);
+export const testTypeEnum = pgEnum('test_type', [
+  'behavior', 
+  'emotional_intelligence', 
+  'leadership', 
+  'enneagram', 
+  'communication', 
+  'behavioral_profile', // Águia, Gato, Lobo e Tubarão
+  'emotional_intelligence_test', // Teste de Inteligência Emocional
+  'enneagram_test', // Teste Eneagrama
+  'custom'
+]);
 export const testStatusEnum = pgEnum('test_status', ['assigned', 'in_progress', 'completed', 'expired']);
 export const messageRoleEnum = pgEnum('message_role', ['user', 'assistant']);
 export const messageFeedbackEnum = pgEnum('message_feedback', ['positive', 'negative', 'neutral']);
@@ -479,6 +489,32 @@ export const testResults = pgTable("test_results", {
   areasForImprovement: json("areas_for_improvement").$type<string[]>(), // Áreas para melhoria
   recommendations: text("recommendations"),
   mentorFeedback: text("mentor_feedback"),
+  // Para Teste de Perfil Comportamental (Águia, Gato, Lobo, Tubarão)
+  behavioralProfile: json("behavioral_profile").$type<{
+    aguia: number;  // Percentual de Águia (0-100)
+    gato: number;   // Percentual de Gato (0-100)
+    lobo: number;   // Percentual de Lobo (0-100)
+    tubarao: number; // Percentual de Tubarão (0-100)
+    predominant: "aguia" | "gato" | "lobo" | "tubarao"; // Perfil predominante
+    secondary: "aguia" | "gato" | "lobo" | "tubarao"; // Perfil secundário
+  }>(),
+  // Para Teste de Inteligência Emocional
+  emotionalIntelligence: json("emotional_intelligence").$type<{
+    autoconsciencia: number;  // Pontuação 0-100
+    autocontrole: number;     // Pontuação 0-100
+    automotivacao: number;    // Pontuação 0-100
+    empatia: number;          // Pontuação 0-100
+    habilidadesSociais: number; // Pontuação 0-100
+    total: number;            // Pontuação total 0-100
+  }>(),
+  // Para Teste de Eneagrama
+  enneagram: json("enneagram").$type<{
+    primaryType: number;      // Tipo principal (1-9)
+    wing: number;             // Asa (tipos adjacentes)
+    scores: number[];         // Pontuações para cada tipo (array de 9 números)
+    integrationDirection: number; // Direção de integração
+    disintegrationDirection: number; // Direção de desintegração
+  }>(),
   analyzed: boolean("analyzed").default(false), // Se um mentor já analisou
   analyzedBy: integer("analyzed_by").references(() => users.id),
   analyzedAt: timestamp("analyzed_at"),
