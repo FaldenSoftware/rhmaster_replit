@@ -170,9 +170,7 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
       
       // Atualiza diretamente no banco, sem Stripe, para fins de testes
       // Em produção, seria feito após confirmação do pagamento no webhook
-      await storage.updateUserStripeInfo(user.id, {
-        stripeSubscriptionId: `sub_simulated_${Date.now()}`,
-      });
+      await storage.updateUserStripeCustomerId(user.id, `cus_simulated_${Date.now()}`);
       
       res.json({
         clientSecret: clientSecret,
