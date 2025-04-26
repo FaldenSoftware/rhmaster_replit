@@ -493,21 +493,60 @@ export class DatabaseStorage implements IStorage {
   
   async updateUserStripeInfo(userId: number, stripeInfo: { 
     stripeCustomerId?: string, 
-    stripeSubscriptionId?: string | null
+    stripeSubscriptionId?: string | null,
+    stripePlanId?: string,
+    subscriptionStatus?: "active" | "inactive" | "trial" | "canceled" | "expired"
   }): Promise<User | undefined> {
     console.log(`Atualizando informações do Stripe para usuário ${userId}:`, stripeInfo);
     
-    const result = await db
-      .update(users)
-      .set({ 
-        ...stripeInfo,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
+    // Preparar dados para atualização
+    const updateData: any = {
+      updatedAt: new Date()
+    };
     
-    const user = result[0];
-    return user;
+    // Adicionar apenas os campos que estão presentes em stripeInfo
+    if (stripeInfo.stripeCustomerId !== undefined) {
+      updateData.stripeCustomerId = stripeInfo.stripeCustomerId;
+    }
+    
+    if (stripeInfo.stripeSubscriptionId !== undefined) {
+      updateData.stripeSubscriptionId = stripeInfo.stripeSubscriptionId;
+    }
+    
+    if (stripeInfo.stripePlanId !== undefined) {
+      updateData.stripePlanId = stripeInfo.stripePlanId;
+    }
+    
+    if (stripeInfo.subscriptionStatus !== undefined) {
+      updateData.subscriptionStatus = stripeInfo.subscriptionStatus;
+      
+      // Se a assinatura estiver ativa, atualizar datas
+      if (stripeInfo.subscriptionStatus === 'active') {
+        updateData.subscriptionStartDate = new Date();
+        
+        // Definir data de término como 30 dias após o início por padrão
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        updateData.subscriptionEndDate = endDate;
+      }
+    }
+    
+    console.log('Dados de atualização:', updateData);
+    
+    try {
+      const result = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+      
+      const user = result[0];
+      console.log('Usuário atualizado com sucesso:', user ? 'ID: ' + user.id : 'Nenhum usuário retornado');
+      return user;
+    } catch (error) {
+      console.error('Erro ao atualizar informações do Stripe para usuário:', error);
+      throw error;
+    }
   }
   
   async getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined> {

@@ -173,15 +173,28 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
         const stripeCustomerId = `cus_simulated_${Date.now()}`;
         const stripeSubscriptionId = `sub_simulated_${Date.now()}`;
         
-        // Atualiza diretamente no banco, sem Stripe, para fins de testes
-        // Em produção, seria feito após confirmação do pagamento no webhook
-        await storage.updateUserStripeInfo(user.id, { 
-          stripeCustomerId: stripeCustomerId,
-          stripeSubscriptionId: stripeSubscriptionId 
-        });
+        // Tenta atualizar o customerId
+        try {
+          // Atualiza apenas o customer ID primeiro
+          await storage.updateUserStripeCustomerId(user.id, stripeCustomerId);
+          console.log(`ID de cliente Stripe atualizado para usuário ${user.id}: ${stripeCustomerId}`);
+        } catch (err) {
+          console.error("Erro ao atualizar ID de cliente Stripe:", err);
+          // Continua mesmo com erro para tentar usar updateStripeInfo simplificado
+        }
         
-        console.log(`Usuário ${user.id} atualizado com sucesso: customerID=${stripeCustomerId}, subscriptionID=${stripeSubscriptionId}`);
+        try {
+          // Tenta atualizar o subscriptionId separadamente se o schema mais amplo falhar
+          await storage.updateUserStripeInfo(user.id, { 
+            stripeSubscriptionId: stripeSubscriptionId 
+          });
+          console.log(`ID de assinatura Stripe atualizado para usuário ${user.id}: ${stripeSubscriptionId}`);
+        } catch (err) {
+          console.error("Erro ao atualizar ID de assinatura Stripe:", err);
+          // Continua mesmo se houver erro
+        }
         
+        // Responde ao cliente
         res.json({
           clientSecret: clientSecret,
           subscriptionId: stripeSubscriptionId,
