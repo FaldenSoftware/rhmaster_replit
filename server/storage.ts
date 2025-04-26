@@ -806,7 +806,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMentors(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.role, "mentor"));
+    try {
+      // Usando SQL direto para mais confiabilidade
+      const query = `
+        SELECT u.*, m.bio, m.specialties, m.years_experience, m.rating, m.available_slots 
+        FROM users u
+        LEFT JOIN mentors m ON u.id = m.user_id
+        WHERE u.role = 'mentor'
+      `;
+      const result = await pool.query(query);
+      
+      // Mapeando resultados para o formato User
+      return result.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        password: row.password,
+        role: row.role,
+        name: row.name || null,
+        avatar: row.avatar || null,
+        created_at: row.created_at instanceof Date ? row.created_at : new Date(row.created_at || Date.now()),
+        stripeCustomerId: row.stripe_customer_id || null,
+        stripeSubscriptionId: row.stripe_subscription_id || null,
+        stripePlanId: row.stripe_plan_id || null,
+        subscriptionStatus: row.subscription_status || null,
+        // Incluindo informações adicionais do mentor
+        bio: row.bio || null,
+        specialties: row.specialties || [],
+        yearsExperience: row.years_experience || 0,
+        rating: row.rating || 0,
+        availableSlots: row.available_slots || 0
+      })) as User[];
+    } catch (error) {
+      console.error('Erro ao buscar todos os mentores:', error);
+      return [];
+    }
   }
 
   async getClientsByMentorId(mentorId: number): Promise<User[]> {
@@ -855,20 +889,69 @@ export class DatabaseStorage implements IStorage {
 
   // Implementação de conversas
   async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
-    const result = await db.insert(conversations).values({
-      ...insertConversation,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }).returning();
-    
-    return result[0];
+    try {
+      const now = new Date();
+      const query = `
+        INSERT INTO conversations 
+          (user_id, assistant_type, title, created_at, updated_at)
+        VALUES 
+          ($1, $2, $3, $4, $5)
+        RETURNING *
+      `;
+      
+      const values = [
+        insertConversation.userId, 
+        insertConversation.assistantType,
+        insertConversation.title,
+        now,
+        now
+      ];
+      
+      const result = await pool.query(query, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error("Falha ao criar conversa");
+      }
+      
+      const row = result.rows[0];
+      
+      // Mapeando para o formato Conversation
+      return {
+        id: row.id,
+        userId: row.user_id,
+        assistantType: row.assistant_type as "mentor" | "client",
+        title: row.title,
+        createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+        updatedAt: row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at)
+      };
+    } catch (error) {
+      console.error('Erro ao criar conversa:', error);
+      throw error;
+    }
   }
 
   async getUserConversations(userId: number, assistantType: string): Promise<Conversation[]> {
-    return await db.select().from(conversations).where(and(
-      eq(conversations.userId, userId),
-      eq(conversations.assistantType, assistantType)
-    )).orderBy(desc(conversations.updatedAt));
+    try {
+      const query = `
+        SELECT * FROM conversations
+        WHERE user_id = $1 AND assistant_type = $2
+        ORDER BY updated_at DESC
+      `;
+      const result = await pool.query(query, [userId, assistantType]);
+      
+      // Mapeando para o formato Conversation
+      return result.rows.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        assistantType: row.assistant_type as "mentor" | "client",
+        title: row.title,
+        createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+        updatedAt: row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at)
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar conversas do usuário:', error);
+      return [];
+    }
   }
 
   async getConversation(id: number): Promise<Conversation | undefined> {
@@ -934,30 +1017,85 @@ export class DatabaseStorage implements IStorage {
 
   // Implementação de sugestões
   async createSuggestion(insertSuggestion: InsertSuggestion): Promise<Suggestion> {
-    const result = await db.insert(suggestions).values({
-      ...insertSuggestion,
-      isRead: false,
-      createdAt: new Date()
-    }).returning();
-    
-    return result[0];
+    try {
+      const now = new Date();
+      const query = `
+        INSERT INTO suggestions 
+          (user_id, assistant_type, title, content, context_type, is_read, created_at, expires_at)
+        VALUES 
+          ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+      
+      const values = [
+        insertSuggestion.userId,
+        insertSuggestion.assistantType,
+        insertSuggestion.title,
+        insertSuggestion.content,
+        insertSuggestion.contextType,
+        false, // isRead sempre começa como false
+        now,
+        insertSuggestion.expiresAt || null
+      ];
+      
+      const result = await pool.query(query, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Falha ao criar sugestão');
+      }
+      
+      const row = result.rows[0];
+      
+      // Mapeando para o formato Suggestion
+      return {
+        id: row.id,
+        userId: row.user_id,
+        assistantType: row.assistant_type as "mentor" | "client",
+        title: row.title,
+        content: row.content,
+        contextType: row.context_type as "test_results" | "client_progress" | "profile_analysis" | "test_taking" | "dashboard",
+        isRead: row.is_read,
+        createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+        expiresAt: row.expires_at ? (row.expires_at instanceof Date ? row.expires_at : new Date(row.expires_at)) : null
+      };
+    } catch (error) {
+      console.error('Erro ao criar sugestão:', error);
+      throw error;
+    }
   }
 
   async getUserSuggestions(userId: number, assistantType: string): Promise<Suggestion[]> {
-    const now = new Date();
-    
-    // Primeiro, selecionar por userId e assistantType
-    const userSuggestions = await db.select()
-      .from(suggestions)
-      .where(eq(suggestions.userId, userId))
-      .where(eq(suggestions.assistantType, assistantType))
-      .orderBy(desc(suggestions.createdAt));
-    
-    // Depois filtrar as sugestões expiradas
-    return userSuggestions.filter(suggestion => {
-      // Se não tiver data de expiração ou se a data de expiração for maior que agora, manter
-      return !suggestion.expiresAt || suggestion.expiresAt > now;
-    });
+    try {
+      const now = new Date();
+      const query = `
+        SELECT * FROM suggestions
+        WHERE user_id = $1 AND assistant_type = $2
+        ORDER BY created_at DESC
+      `;
+      
+      const result = await pool.query(query, [userId, assistantType]);
+      
+      // Mapeando para o formato Suggestion e filtrando sugestões expiradas
+      return result.rows
+        .map(row => ({
+          id: row.id,
+          userId: row.user_id,
+          assistantType: row.assistant_type as "mentor" | "client",
+          title: row.title,
+          content: row.content,
+          contextType: row.context_type as "test_results" | "client_progress" | "profile_analysis" | "test_taking" | "dashboard",
+          isRead: row.is_read,
+          createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+          expiresAt: row.expires_at ? (row.expires_at instanceof Date ? row.expires_at : new Date(row.expires_at)) : null
+        }))
+        .filter(suggestion => {
+          // Se não tiver data de expiração ou se a data de expiração for maior que agora, manter
+          return !suggestion.expiresAt || suggestion.expiresAt > now;
+        });
+    } catch (error) {
+      console.error('Erro ao buscar sugestões do usuário:', error);
+      return [];
+    }
   }
 
   async markSuggestionAsRead(id: number): Promise<Suggestion | undefined> {
