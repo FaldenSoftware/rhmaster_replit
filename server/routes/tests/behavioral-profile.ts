@@ -63,7 +63,7 @@ async function getOrCreateBehavioralProfileTest(mentorId: number) {
     .from(tests)
     .where(
       and(
-        eq(tests.type, "behavioral_profile"),
+        eq(tests.type, "behavior"),
         eq(tests.isTemplate, true)
       )
     );
@@ -78,7 +78,7 @@ async function getOrCreateBehavioralProfileTest(mentorId: number) {
     .values({
       title: "Teste de Perfil Comportamental",
       description: "Avalia seu estilo comportamental predominante entre os perfis: Águia, Gato, Lobo e Tubarão.",
-      type: "behavioral_profile",
+      type: "behavior",
       estimatedTimeMinutes: 20,
       active: true,
       isTemplate: true,
@@ -120,7 +120,7 @@ router.get("/in-progress", async (req, res) => {
       .from(tests)
       .where(eq(tests.id, assignment.testId));
 
-    if (!test || test.type !== "behavioral_profile") {
+    if (!test || test.type !== "behavior") {
       return res.status(404).json({ message: "Teste comportamental não encontrado" });
     }
 
