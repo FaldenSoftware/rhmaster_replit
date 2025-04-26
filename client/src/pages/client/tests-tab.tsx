@@ -2,6 +2,7 @@ import { ClipboardList, Eye } from "lucide-react";
 import { TestCard } from "@/components/dashboard/test-card";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
+import { useLocation } from "wouter";
 
 export function ClientTestsTab() {
   return (
@@ -12,12 +13,15 @@ export function ClientTestsTab() {
 }
 
 function ClientTestsContent() {
+  const [, setLocation] = useLocation();
+  
   // Dados mockados para exemplo
   const assignedTests = [
     {
       id: 1,
-      title: "Avaliação de Perfil de Liderança",
-      description: "Avalia o estilo de liderança e identifica pontos fortes e áreas de desenvolvimento.",
+      type: "behavioral-profile",
+      title: "Perfil Comportamental",
+      description: "Avalia seu perfil de comportamento e identifica pontos fortes e áreas de desenvolvimento.",
       status: "assigned",
       dueDate: "2023-05-02T23:59:59",
       estimatedTime: 15,
@@ -25,12 +29,23 @@ function ClientTestsContent() {
     },
     {
       id: 2,
+      type: "emotional-intelligence",
       title: "Inteligência Emocional",
       description: "Mede a capacidade de reconhecer, entender e gerenciar emoções próprias e de outros.",
       status: "in_progress",
       dueDate: "2023-04-30T23:59:59",
       estimatedTime: 20,
       progress: 35,
+      assignedBy: "Marcos Silva"
+    },
+    {
+      id: 3,
+      type: "enneagram",
+      title: "Eneagrama",
+      description: "Identifica seu tipo de personalidade de acordo com o sistema Eneagrama.",
+      status: "assigned",
+      dueDate: "2023-05-10T23:59:59",
+      estimatedTime: 25,
       assignedBy: "Marcos Silva"
     }
   ];
@@ -102,8 +117,8 @@ function ClientTestsContent() {
                   status={test.status as any}
                   dueDate={test.dueDate}
                   estimatedTime={test.estimatedTime}
-                  onStart={() => console.log(`Iniciando teste ${test.id}`)}
-                  onContinue={() => console.log(`Continuando teste ${test.id}`)}
+                  onStart={() => setLocation(`/tests/${test.type}`)}
+                  onContinue={() => setLocation(`/tests/${test.type}`)}
                 />
               ))
             ) : (
