@@ -32,6 +32,7 @@ export function SubscriptionFormContainer({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentData, setPaymentData] = useState<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -50,37 +51,63 @@ export function SubscriptionFormContainer({
           throw new Error('Plano inválido');
         }
 
+        console.log('Iniciando solicitação de pagamento para plano:', planId);
+
         // Busca o client secret do Stripe para iniciar o pagamento
         const response = await apiRequest('POST', '/api/subscription/create-payment-intent', { 
           planId
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
+          // Tenta obter informações de erro do response
+          let errorMessage = 'Erro ao iniciar assinatura';
           try {
-            // Tenta fazer o parse do texto como JSON
-            const errorData = JSON.parse(errorText);
-            throw new Error(errorData.message || 'Erro ao iniciar assinatura');
-          } catch (jsonError) {
-            // Se falhar no parse, retorna o texto original ou uma mensagem de erro genérica
-            throw new Error(errorText || 'Erro ao iniciar assinatura. Formato de resposta inválido.');
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // Se não for possível obter JSON, tenta obter texto
+            try {
+              const errorText = await response.text();
+              errorMessage = errorText || errorMessage;
+            } catch (textError) {
+              // Manter a mensagem padrão se não conseguir obter texto
+            }
           }
+          throw new Error(errorMessage);
         }
 
+        // Tenta obter dados JSON com tratamento robusto
         let data;
         try {
-          const responseText = await response.text();
-          data = JSON.parse(responseText);
+          data = await response.json();
         } catch (e) {
-          console.error('Erro ao fazer parse do JSON:', e);
-          throw new Error('Erro no formato da resposta do servidor');
+          console.error('Erro ao obter resposta JSON:', e);
+          try {
+            const responseText = await response.text();
+            if (responseText) {
+              try {
+                data = JSON.parse(responseText);
+              } catch (jsonError) {
+                console.error('Erro ao analisar resposta como JSON:', jsonError);
+                throw new Error('Resposta inválida do servidor');
+              }
+            } else {
+              throw new Error('Resposta vazia do servidor');
+            }
+          } catch (textError) {
+            console.error('Erro ao obter resposta como texto:', textError);
+            throw new Error('Erro de comunicação com o servidor');
+          }
         }
         
-        if (!data.clientSecret) {
-          throw new Error('Não foi possível iniciar o processo de pagamento. Client secret não fornecido.');
+        console.log('Resposta da API de pagamento:', data);
+        
+        if (!data || !data.clientSecret) {
+          throw new Error('Dados de pagamento inválidos ou incompletos');
         }
         
         setClientSecret(data.clientSecret);
+        setPaymentData(data);
       } catch (err: any) {
         console.error('Erro ao iniciar assinatura:', err);
         setError(err.message || 'Erro ao processar assinatura');

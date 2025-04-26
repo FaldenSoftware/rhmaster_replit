@@ -24,7 +24,9 @@ export interface IStorage {
   updateUserStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User | undefined>;
   updateUserStripeInfo(userId: number, stripeInfo: { 
     stripeCustomerId?: string, 
-    stripeSubscriptionId?: string | null 
+    stripeSubscriptionId?: string | null,
+    stripePlanId?: string,
+    subscriptionStatus?: "active" | "inactive" | "trial" | "canceled" | "expired"
   }): Promise<User | undefined>;
   getAllMentors(): Promise<User[]>;
   getClientsByMentorId(mentorId: number): Promise<User[]>;

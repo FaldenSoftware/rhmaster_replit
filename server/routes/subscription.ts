@@ -168,18 +168,35 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
       
       console.log(`Ativando plano ${planId} diretamente para o usuário ${user.id}`);
       
-      // Atualiza diretamente no banco, sem Stripe, para fins de testes
-      // Em produção, seria feito após confirmação do pagamento no webhook
-      await storage.updateUserStripeCustomerId(user.id, `cus_simulated_${Date.now()}`);
-      
-      res.json({
-        clientSecret: clientSecret,
-        subscriptionId: `sub_simulated_${Date.now()}`,
-        // Adicionando informações extras para o frontend saber que é um pagamento simulado
-        simulated: true,
-        planId: planId,
-        amount: planPrices[planId as keyof typeof planPrices]
-      });
+      try {
+        // Gerar IDs simulados
+        const stripeCustomerId = `cus_simulated_${Date.now()}`;
+        const stripeSubscriptionId = `sub_simulated_${Date.now()}`;
+        
+        // Atualiza diretamente no banco, sem Stripe, para fins de testes
+        // Em produção, seria feito após confirmação do pagamento no webhook
+        await storage.updateUserStripeInfo(user.id, { 
+          stripeCustomerId: stripeCustomerId,
+          stripeSubscriptionId: stripeSubscriptionId 
+        });
+        
+        console.log(`Usuário ${user.id} atualizado com sucesso: customerID=${stripeCustomerId}, subscriptionID=${stripeSubscriptionId}`);
+        
+        res.json({
+          clientSecret: clientSecret,
+          subscriptionId: stripeSubscriptionId,
+          // Adicionando informações extras para o frontend saber que é um pagamento simulado
+          simulated: true,
+          planId: planId,
+          amount: planPrices[planId as keyof typeof planPrices]
+        });
+      } catch (err) {
+        console.error("Erro ao atualizar informações de pagamento do usuário:", err);
+        res.status(500).json({ 
+          message: "Erro ao processar informações de pagamento", 
+          error: (err as Error).message
+        });
+      }
     } catch (error: any) {
       console.error("Erro ao criar intenção de pagamento:", error);
       res.status(500).json({ message: error.message || "Erro ao criar intenção de pagamento" });

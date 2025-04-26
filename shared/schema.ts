@@ -39,6 +39,11 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   role: userRoleEnum("role").notNull().default('client'),
   stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  stripePlanId: text("stripe_plan_id"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").default('trial'),
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  subscriptionEndDate: timestamp("subscription_end_date"),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -53,6 +58,7 @@ export const users = pgTable("users", {
     emailIdx: uniqueIndex("email_idx").on(table.email),
     usernameIdx: uniqueIndex("username_idx").on(table.username),
     roleIdx: index("role_idx").on(table.role),
+    stripeSubIdx: index("stripe_subscription_id_idx").on(table.stripeSubscriptionId),
   }
 });
 
