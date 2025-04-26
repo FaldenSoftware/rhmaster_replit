@@ -249,11 +249,22 @@ router.post("/confirm-payment", isAuthenticated, isMentor, async (req, res) => {
       const periodEnd = new Date();
       periodEnd.setMonth(periodEnd.getMonth() + 1); // 1 mês de validade
       
-      // Obtendo número de clientes
-      const clients = await storage.getClientsByMentorId(user.id);
-      
       // Determinando capacidade máxima de clientes
       const maxClients = stripeService.getMaxClientsForPlan(planId as 'basic' | 'pro' | 'enterprise');
+      
+      // Valor padrão para número de clientes em caso de erro
+      let clientCount = 0;
+      
+      try {
+        // Obtendo número de clientes
+        const clients = await storage.getClientsByMentorId(user.id);
+        if (clients && Array.isArray(clients)) {
+          clientCount = clients.length;
+        }
+      } catch (error) {
+        // Em caso de erro, mantém clientCount como 0
+        console.error("Erro ao buscar clientes:", error);
+      }
       
       // Respondemos com um objeto de assinatura similar ao que teria na API atual
       res.json({
@@ -263,7 +274,7 @@ router.post("/confirm-payment", isAuthenticated, isMentor, async (req, res) => {
           plan: planId,
           status: "active",
           maxClients: maxClients,
-          clientCount: clients.length,
+          clientCount: clientCount,
           startDate: now.toISOString(),
           autoRenew: true,
           currentPeriodEnd: periodEnd.toISOString(),

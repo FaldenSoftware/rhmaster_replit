@@ -564,7 +564,7 @@ function InvoiceList() {
     );
   }
 
-  if (!invoices || invoices.length === 0) {
+  if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -606,7 +606,7 @@ function InvoiceList() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice: any) => (
+              {Array.isArray(invoices) && invoices.map((invoice: any) => (
                 <tr key={invoice.id} className="border-b hover:bg-muted/50">
                   <td className="px-4 py-3">{invoice.number}</td>
                   <td className="px-4 py-3">
