@@ -10,10 +10,30 @@ import {
   testResponseAnswers, 
   testResults,
   gamificationPoints,
-  pointsHistory
+  pointsHistory,
+  clients
 } from "@shared/schema";
 
 const router = Router();
+
+// Função auxiliar para obter o ID do cliente a partir do ID do usuário
+async function getClientIdFromUserId(userId: number): Promise<number> {
+  try {
+    const [client] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(eq(clients.userId, userId));
+    
+    if (!client) {
+      throw new Error(`Cliente não encontrado para o usuário ${userId}`);
+    }
+    
+    return client.id;
+  } catch (error) {
+    console.error("Erro ao buscar cliente:", error);
+    throw error;
+  }
+}
 
 // Algoritmo para calcular os resultados do perfil comportamental
 function calculateBehavioralProfile(answers: Record<string, string>) {
@@ -99,13 +119,16 @@ router.get("/in-progress", async (req, res) => {
   }
 
   try {
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
     // Buscar atribuição de teste para o usuário logado
     const [assignment] = await db
       .select()
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.status, "in_progress")
         )
       );
@@ -172,6 +195,9 @@ router.post("/save", async (req, res) => {
   }
 
   try {
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
     // Buscar ou criar o teste
     const test = await getOrCreateBehavioralProfileTest(1); // Mentor ID padrão como 1 para o template
 
@@ -181,7 +207,7 @@ router.post("/save", async (req, res) => {
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.testId, test.id),
           eq(testAssignments.status, "in_progress")
         )
@@ -194,8 +220,8 @@ router.post("/save", async (req, res) => {
         .insert(testAssignments)
         .values({
           testId: test.id,
-          clientId: req.user.id,
-          assignedBy: req.user.id, // Auto-atribuição
+          clientId: clientId,  // Usando o ID do cliente obtido
+          assignedBy: 1, // Mentor ID 1
           status: "in_progress",
           kanbanColumn: "doing",
           priority: "medium",
@@ -217,7 +243,7 @@ router.post("/save", async (req, res) => {
         .insert(testResponses)
         .values({
           assignmentId: assignment.id,
-          clientId: req.user.id,
+          clientId: clientId,  // Usando o ID do cliente obtido
           startedAt: startTime ? new Date(startTime) : new Date(),
         })
         .returning()
@@ -292,7 +318,7 @@ router.post("/save", async (req, res) => {
         .values({
           assignmentId: assignment.id,
           responseId: response.id,
-          clientId: req.user.id,
+          clientId: clientId,  // Usando o ID do cliente obtido
           score: Object.keys(answers).length, // Número de questões respondidas
           percentage: (Object.keys(answers).length / 24) * 100, // 24 questões total
           assessment: `Seu perfil predominante é ${profileResult.predominant} (${profileResult[profileResult.predominant]}%) com ${profileResult.secondary} (${profileResult[profileResult.secondary]}%) como secundário.`,
@@ -305,7 +331,7 @@ router.post("/save", async (req, res) => {
         .returning();
 
       // Adicionar pontos de gamificação
-      await addGamificationPoints(req.user.id, 100, "Conclusão do Teste de Perfil Comportamental");
+      await addGamificationPoints(clientId, 100, "Conclusão do Teste de Perfil Comportamental");
 
       return res.json({
         message: "Teste concluído com sucesso",
