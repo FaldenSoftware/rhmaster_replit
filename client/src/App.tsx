@@ -25,6 +25,12 @@ import { AchievementsTab } from "@/pages/client/achievements-tab";
 import MentorAssistantPage from "@/pages/mentor/assistant-page";
 import ClientAssistantPage from "@/pages/client/assistant-page";
 
+// Páginas de testes comportamentais
+import TestsIndexPage from "@/pages/tests/index-page";
+import BehavioralProfilePage from "@/pages/tests/behavioral-profile-page";
+import EmotionalIntelligencePage from "@/pages/tests/emotional-intelligence-page";
+import EnneagramPage from "@/pages/tests/enneagram-page";
+
 function Router() {
   return (
     <Switch>

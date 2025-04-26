@@ -1,0 +1,29 @@
+import { EmotionalIntelligenceTest } from "@/components/tests/EmotionalIntelligenceTest";
+import { useAuth } from "@/hooks/use-auth";
+import { Navigate } from "wouter";
+
+export default function EmotionalIntelligencePage() {
+  const { user } = useAuth();
+
+  // Redirecionar para login se não autenticado
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+
+  // Apenas clientes podem realizar os testes
+  if (user.role !== "client") {
+    return (
+      <div className="container mx-auto p-8 text-center">
+        <h1 className="text-2xl font-bold text-primary mb-4">Acesso Restrito</h1>
+        <p className="mb-4">
+          Este teste é destinado apenas aos clientes do RH Master.
+        </p>
+        <p>
+          Os mentores podem visualizar os resultados dos testes através do dashboard.
+        </p>
+      </div>
+    );
+  }
+
+  return <EmotionalIntelligenceTest />;
+}
