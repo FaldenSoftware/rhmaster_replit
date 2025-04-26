@@ -810,10 +810,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByMentorId(mentorId: number): Promise<User[]> {
-    return await db.select().from(users).where(and(
-      eq(users.role, "client"),
-      eq(users.mentorId, mentorId)
-    ));
+    try {
+      // Primeiro pegamos os IDs dos usuários da tabela clients
+      const clientsQuery = `
+        SELECT user_id FROM clients 
+        WHERE mentor_id = $1
+      `;
+      const clientResult = await pool.query(clientsQuery, [mentorId]);
+      
+      if (clientResult.rows.length === 0) {
+        return [];
+      }
+      
+      // Pegamos os IDs de usuários dos clientes
+      const userIds = clientResult.rows.map(row => row.user_id);
+      
+      // Buscamos os detalhes completos dos usuários
+      const usersQuery = `
+        SELECT * FROM users 
+        WHERE id = ANY($1) AND role = 'client'
+      `;
+      const userResult = await pool.query(usersQuery, [userIds]);
+      
+      // Convertemos o resultado para o formato User
+      return userResult.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        password: row.password,
+        role: row.role,
+        name: row.name || null,
+        avatar: row.avatar || null,
+        created_at: row.created_at || new Date(),
+        stripeCustomerId: row.stripe_customer_id || null,
+        stripeSubscriptionId: row.stripe_subscription_id || null,
+        stripePlanId: row.stripe_plan_id || null,
+        subscriptionStatus: row.subscription_status || null
+      })) as User[];
+    } catch (error) {
+      console.error('Erro ao buscar clientes por mentor ID:', error);
+      return [];
+    }
   }
 
   // Implementação de conversas
