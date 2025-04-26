@@ -559,11 +559,65 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     console.log(`Procurando usuário com email: "${email}"`);
     
-    const result = await db.select().from(users).where(eq(users.email, email));
-    const user = result[0];
-    
-    console.log('Usuário encontrado:', user || 'Nenhum usuário encontrado');
-    return user;
+    try {
+      // Primeira tentativa: select padrão
+      const result = await db.select().from(users).where(eq(users.email, email));
+      const user = result[0];
+      
+      console.log('Usuário encontrado:', user ? 'Sim' : 'Não');
+      return user;
+    } catch (error) {
+      console.error("Erro ao buscar usuário por email, tentando SQL direto:", error);
+      
+      // Fallback: usar SQL direto com apenas colunas conhecidas
+      try {
+        const result = await db.execute(`
+          SELECT id, username, password, email, name, role, active, 
+                 created_at, updated_at, last_login, profile, company, 
+                 position, phone, avatar, stripe_customer_id, 
+                 stripe_subscription_id
+          FROM users 
+          WHERE email = $1
+        `, [email]);
+        
+        if (result.rows.length === 0) {
+          console.log('Nenhum usuário encontrado no fallback');
+          return undefined;
+        }
+        
+        const row = result.rows[0];
+        console.log('Usuário encontrado via fallback:', row ? 'Sim' : 'Não');
+        
+        // Converter o nome das colunas snake_case para camelCase
+        const user: User = {
+          id: row.id,
+          username: row.username,
+          password: row.password,
+          email: row.email,
+          name: row.name,
+          role: row.role,
+          active: row.active,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          lastLogin: row.last_login,
+          profile: row.profile,
+          company: row.company,
+          position: row.position,
+          phone: row.phone,
+          avatar: row.avatar,
+          stripeCustomerId: row.stripe_customer_id,
+          stripeSubscriptionId: row.stripe_subscription_id,
+          // Se estas colunas ainda não existirem, adiciona valores padrão
+          stripePlanId: null,
+          subscriptionStatus: null
+        };
+        
+        return user;
+      } catch (fallbackError) {
+        console.error("Erro também no fallback de getUserByEmail:", fallbackError);
+        return undefined;
+      }
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
