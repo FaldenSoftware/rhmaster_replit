@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
+import { TrialNotification } from "@/components/dashboard/trial-notification";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto p-6 bg-slate-50">
+          {user.role === 'mentor' && <TrialNotification />}
           {children}
         </main>
       </div>
