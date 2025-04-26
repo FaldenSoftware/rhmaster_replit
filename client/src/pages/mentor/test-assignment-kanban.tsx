@@ -11,7 +11,8 @@ import {
   X,
   Clock,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -300,28 +301,28 @@ export function TestAssignmentKanbanContent() {
     
     return (
       <div className={`
-        p-4 rounded-lg shadow-md bg-white border-l-4 ${test.color.replace('bg-', 'border-')}
-        ${isDragging ? 'ring-2 ring-primary ring-offset-2' : ''}
+        p-5 rounded-lg shadow-sm bg-white border-l-4 ${test.color.replace('bg-', 'border-')}
+        ${isDragging ? 'ring-2 ring-primary ring-offset-2 shadow-md' : 'hover:shadow-md'}
         transition-all duration-200
       `}>
-        <div className="flex items-center">
-          <div className={`p-2 rounded-full ${test.color} text-white mr-3`}>
+        <div className="flex items-start">
+          <div className={`p-2 rounded-lg ${test.color} text-white mr-3 flex-shrink-0`}>
             <TestIcon className="h-5 w-5" />
           </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">{test.title}</h3>
-          </div>
-        </div>
-        
-        <p className="mt-2 text-sm text-slate-600 line-clamp-2">{test.description}</p>
-        
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>{test.estimatedTime} min</span>
-          </div>
-          <div className="flex items-center">
-            <span>{test.questionCount} questões</span>
+          <div className="flex-1">
+            <h3 className="font-semibold text-slate-900 text-base mb-1">{test.title}</h3>
+            <p className="text-sm text-slate-600 line-clamp-2 mb-2">{test.description}</p>
+            
+            <div className="flex items-center text-xs text-slate-500 pt-1 border-t border-slate-100">
+              <div className="flex items-center mr-3">
+                <Clock className="h-3.5 w-3.5 mr-1 text-slate-400" />
+                <span>{test.estimatedTime} min</span>
+              </div>
+              <div className="flex items-center">
+                <FileText className="h-3.5 w-3.5 mr-1 text-slate-400" />
+                <span>{test.questionCount} questões</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -356,35 +357,35 @@ export function TestAssignmentKanbanContent() {
     }
     
     return (
-      <div className="p-3 rounded-lg shadow-sm bg-white border mb-3 relative group">
+      <div className="p-4 rounded-lg shadow-sm bg-white border-l-4 border border-slate-200 mb-3 relative group hover:shadow-md transition-all duration-200">
         <button 
-          className="absolute top-2 right-2 p-1 rounded-full bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-200"
           onClick={() => removeAssignedTest(clientId, assignedTest.id)}
           aria-label="Remover teste"
         >
-          <X className="h-3 w-3 text-slate-500" />
+          <X className="h-3.5 w-3.5 text-slate-500" />
         </button>
         
-        <div className="flex items-center">
-          <div className={`p-1.5 rounded-full ${test.color} text-white mr-2`}>
+        <div className="flex items-start">
+          <div className={`p-1.5 rounded-lg ${test.color} text-white mr-3 flex-shrink-0`}>
             <TestIcon className="h-4 w-4" />
           </div>
-          <div>
-            <h4 className="font-medium text-sm text-slate-900">{test.title}</h4>
+          <div className="flex-1">
+            <h4 className="font-medium text-sm text-slate-900 mb-1">{test.title}</h4>
+            
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Badge variant="outline" className={statusColor}>
+                {statusLabel}
+              </Badge>
+              
+              {assignedTest.dueDate && (
+                <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {format(new Date(assignedTest.dueDate), "dd/MM/yyyy")}
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-        
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Badge variant="outline" className={statusColor}>
-            {statusLabel}
-          </Badge>
-          
-          {assignedTest.dueDate && (
-            <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-200">
-              <Calendar className="h-3 w-3 mr-1" />
-              {format(new Date(assignedTest.dueDate), "dd/MM/yyyy")}
-            </Badge>
-          )}
         </div>
       </div>
     );
