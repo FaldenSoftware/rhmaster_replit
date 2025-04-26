@@ -115,25 +115,4 @@
   .secondary-light {
     @apply bg-[#E5C76B] text-foreground;
   }
-  
-  /* Animações para a landing page */
-  .animate-float {
-    animation: float 5s ease-in-out infinite;
-  }
-  
-  .animate-float-slow {
-    animation: float 7s ease-in-out infinite;
-  }
-  
-  @keyframes float {
-    0% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-    100% {
-      transform: translateY(0px);
-    }
-  }
 }
