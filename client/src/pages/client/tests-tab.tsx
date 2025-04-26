@@ -117,8 +117,14 @@ function ClientTestsContent() {
                   status={test.status as any}
                   dueDate={test.dueDate}
                   estimatedTime={test.estimatedTime}
-                  onStart={() => setLocation(`/tests/${test.type}`)}
-                  onContinue={() => setLocation(`/tests/${test.type}`)}
+                  onStart={() => {
+                    console.log(`Iniciando teste: ${test.type}`);
+                    setLocation(`/tests/${test.type}`);
+                  }}
+                  onContinue={() => {
+                    console.log(`Continuando teste: ${test.type}`);
+                    setLocation(`/tests/${test.type}`);
+                  }}
                 />
               ))
             ) : (
