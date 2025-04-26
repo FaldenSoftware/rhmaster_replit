@@ -61,6 +61,12 @@ function Router() {
       <ProtectedRoute path="/client-dashboard/profile" component={ClientProfileTab} />
       <ProtectedRoute path="/client-dashboard/assistant" component={ClientAssistantPage} />
       
+      {/* Páginas de testes comportamentais */}
+      <ProtectedRoute path="/tests" component={TestsIndexPage} />
+      <ProtectedRoute path="/tests/behavioral-profile" component={BehavioralProfilePage} />
+      <ProtectedRoute path="/tests/emotional-intelligence" component={EmotionalIntelligencePage} />
+      <ProtectedRoute path="/tests/enneagram" component={EnneagramPage} />
+      
       <Route component={NotFound} />
     </Switch>
   );

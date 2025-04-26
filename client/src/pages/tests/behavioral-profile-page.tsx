@@ -6,8 +6,10 @@ export default function BehavioralProfilePage() {
   const { user } = useAuth();
 
   // Redirecionar para login se não autenticado
+  const [, setLocation] = useLocation();
   if (!user) {
-    return <Navigate to="/auth" />;
+    setLocation("/auth");
+    return null;
   }
 
   // Apenas clientes podem realizar os testes

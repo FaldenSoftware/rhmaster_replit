@@ -1,13 +1,15 @@
 import { EmotionalIntelligenceTest } from "@/components/tests/EmotionalIntelligenceTest";
 import { useAuth } from "@/hooks/use-auth";
-import { Navigate } from "wouter";
+import { useLocation } from "wouter";
 
 export default function EmotionalIntelligencePage() {
   const { user } = useAuth();
 
   // Redirecionar para login se não autenticado
+  const [, setLocation] = useLocation();
   if (!user) {
-    return <Navigate to="/auth" />;
+    setLocation("/auth");
+    return null;
   }
 
   // Apenas clientes podem realizar os testes
