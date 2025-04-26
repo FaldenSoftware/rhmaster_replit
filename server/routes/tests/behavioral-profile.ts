@@ -355,7 +355,10 @@ router.get("/result", async (req, res) => {
   }
 
   try {
-    // Buscar resultado do teste para o usuário logado
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
+    // Buscar resultado do teste para o cliente
     const [result] = await db
       .select({
         id: testResults.id,
@@ -369,7 +372,7 @@ router.get("/result", async (req, res) => {
         mentorFeedback: testResults.mentorFeedback,
       })
       .from(testResults)
-      .where(eq(testResults.clientId, req.user.id))
+      .where(eq(testResults.clientId, clientId))
       .orderBy(testResults.createdAt, "desc")
       .limit(1);
 

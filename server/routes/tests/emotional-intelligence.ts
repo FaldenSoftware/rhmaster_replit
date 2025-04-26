@@ -10,10 +10,30 @@ import {
   testResponseAnswers, 
   testResults,
   gamificationPoints,
-  pointsHistory
+  pointsHistory,
+  clients
 } from "@shared/schema";
 
 const router = Router();
+
+// Função auxiliar para obter o ID do cliente a partir do ID do usuário
+async function getClientIdFromUserId(userId: number): Promise<number> {
+  try {
+    const [client] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(eq(clients.userId, userId));
+    
+    if (!client) {
+      throw new Error(`Cliente não encontrado para o usuário ${userId}`);
+    }
+    
+    return client.id;
+  } catch (error) {
+    console.error("Erro ao buscar cliente:", error);
+    throw error;
+  }
+}
 
 // Algoritmo para calcular os resultados do teste de inteligência emocional
 function calculateEmotionalIntelligence(answers: Record<string, number>) {
@@ -279,13 +299,16 @@ router.get("/in-progress", async (req, res) => {
   }
 
   try {
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
     // Buscar atribuição de teste para o usuário logado
     const [assignment] = await db
       .select()
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.status, "in_progress")
         )
       );
@@ -352,6 +375,9 @@ router.post("/save", async (req, res) => {
   }
 
   try {
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
     // Buscar ou criar o teste
     const test = await getOrCreateEmotionalIntelligenceTest(1); // Mentor ID padrão como 1 para o template
 
@@ -361,7 +387,7 @@ router.post("/save", async (req, res) => {
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.testId, test.id),
           eq(testAssignments.status, "in_progress")
         )
@@ -374,8 +400,8 @@ router.post("/save", async (req, res) => {
         .insert(testAssignments)
         .values({
           testId: test.id,
-          clientId: req.user.id,
-          assignedBy: req.user.id, // Auto-atribuição
+          clientId: clientId, // Usando o ID do cliente obtido
+          assignedBy: 1, // Mentor ID 1
           status: "in_progress",
           kanbanColumn: "doing",
           priority: "medium",
@@ -397,7 +423,7 @@ router.post("/save", async (req, res) => {
         .insert(testResponses)
         .values({
           assignmentId: assignment.id,
-          clientId: req.user.id,
+          clientId: clientId, // Usando o ID do cliente obtido
           startedAt: startTime ? new Date(startTime) : new Date(),
         })
         .returning()
@@ -487,7 +513,7 @@ router.post("/save", async (req, res) => {
         .values({
           assignmentId: assignment.id,
           responseId: response.id,
-          clientId: req.user.id,
+          clientId: clientId, // Usando o ID do cliente obtido
           score: Math.round(emotionalIntelligenceResult.total * (150 / 100)), // Converter percentual para pontos (máx 150)
           percentage: emotionalIntelligenceResult.total,
           assessment: `Sua pontuação total de inteligência emocional é ${emotionalIntelligenceResult.total}%. ${getGeneralFeedback(emotionalIntelligenceResult.total)}`,
@@ -500,7 +526,7 @@ router.post("/save", async (req, res) => {
         .returning();
 
       // Adicionar pontos de gamificação
-      await addGamificationPoints(req.user.id, 100, "Conclusão do Teste de Inteligência Emocional");
+      await addGamificationPoints(clientId, 100, "Conclusão do Teste de Inteligência Emocional");
 
       return res.json({
         message: "Teste concluído com sucesso",
@@ -524,7 +550,10 @@ router.get("/result", async (req, res) => {
   }
 
   try {
-    // Buscar resultado do teste para o usuário logado
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
+    // Buscar resultado do teste para o cliente
     const [result] = await db
       .select({
         id: testResults.id,
@@ -538,7 +567,7 @@ router.get("/result", async (req, res) => {
         mentorFeedback: testResults.mentorFeedback,
       })
       .from(testResults)
-      .where(eq(testResults.clientId, req.user.id))
+      .where(eq(testResults.clientId, clientId))
       .orderBy(testResults.createdAt, "desc")
       .limit(1);
 
