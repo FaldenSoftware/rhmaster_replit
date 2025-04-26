@@ -224,6 +224,9 @@ router.post("/save", async (req, res) => {
   }
 
   try {
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
     // Buscar ou criar o teste
     const test = await getOrCreateEnneagramTest(1); // Mentor ID padrão como 1 para o template
 
@@ -233,7 +236,7 @@ router.post("/save", async (req, res) => {
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.testId, test.id),
           eq(testAssignments.status, "in_progress")
         )
@@ -246,8 +249,8 @@ router.post("/save", async (req, res) => {
         .insert(testAssignments)
         .values({
           testId: test.id,
-          clientId: req.user.id,
-          assignedBy: req.user.id, // Auto-atribuição
+          clientId: clientId, // Usando o ID do cliente obtido
+          assignedBy: 1, // Mentor ID padrão para o template
           status: "in_progress",
           kanbanColumn: "doing",
           priority: "medium",
@@ -269,7 +272,7 @@ router.post("/save", async (req, res) => {
         .insert(testResponses)
         .values({
           assignmentId: assignment.id,
-          clientId: req.user.id,
+          clientId: clientId, // Usando o ID do cliente obtido
           startedAt: startTime ? new Date(startTime) : new Date(),
         })
         .returning()
@@ -357,7 +360,7 @@ router.post("/save", async (req, res) => {
         .values({
           assignmentId: assignment.id,
           responseId: response.id,
-          clientId: req.user.id,
+          clientId: clientId, // Usando o ID do cliente obtido
           score: Math.round(enneagramResult.scores[enneagramResult.primaryType - 1]),
           percentage: Math.round((enneagramResult.scores[enneagramResult.primaryType - 1] / 36) * 100),
           assessment: `Seu tipo principal de Eneagrama é o Tipo ${enneagramResult.primaryType} - ${typeNames[enneagramResult.primaryType as keyof typeof typeNames]}, com uma asa do Tipo ${enneagramResult.wing}.`,
@@ -370,7 +373,7 @@ router.post("/save", async (req, res) => {
         .returning();
 
       // Adicionar pontos de gamificação
-      await addGamificationPoints(req.user.id, 100, "Conclusão do Teste de Eneagrama");
+      await addGamificationPoints(clientId, 100, "Conclusão do Teste de Eneagrama");
 
       return res.json({
         message: "Teste concluído com sucesso",
@@ -394,7 +397,10 @@ router.get("/result", async (req, res) => {
   }
 
   try {
-    // Buscar resultado do teste para o usuário logado
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
+    // Buscar resultado do teste para o cliente
     const [result] = await db
       .select({
         id: testResults.id,
@@ -408,7 +414,7 @@ router.get("/result", async (req, res) => {
         mentorFeedback: testResults.mentorFeedback,
       })
       .from(testResults)
-      .where(eq(testResults.clientId, req.user.id))
+      .where(eq(testResults.clientId, clientId))
       .orderBy(testResults.createdAt, "desc")
       .limit(1);
 
