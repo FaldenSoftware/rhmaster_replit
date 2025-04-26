@@ -163,16 +163,16 @@ export function SubscriptionFormContainer({
   const isSimulated = paymentData?.simulated === true;
   
   // Opções para o componente Elements
-  const options: any = {
-    clientSecret,
-    // Se for simulado, estamos em modo de desenvolvimento, então usamos options diferentes
-    ...(isSimulated ? { 
-      mode: 'setup' as const,
-      appearance: { theme: 'stripe' },
-      // Usar moeda da resposta ou padrão 'brl'
-      currency: paymentData?.currency || 'brl'
-    } : {})
-  };
+  // No modo simulado, não podemos usar clientSecret e mode juntos (erro do Stripe)
+  const options: any = isSimulated 
+    ? {
+        mode: 'setup' as const,
+        appearance: { theme: 'stripe' },
+        currency: paymentData?.currency || 'brl'
+      }
+    : {
+        clientSecret
+      };
   
   return (
     <Elements stripe={stripePromise} options={options}>
