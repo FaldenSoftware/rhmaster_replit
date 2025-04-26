@@ -28,13 +28,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
-import { Loader2, AlertCircle, CreditCard, Calendar, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, Calendar, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -260,397 +254,224 @@ export function SubscriptionManagement() {
   // Determina se a assinatura pode ser reativada
   const canReactivate = subscription.status === 'active' && subscription.cancelAtPeriodEnd;
 
-  return (
-    <Tabs defaultValue="details">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="details">Detalhes</TabsTrigger>
-        <TabsTrigger value="billing">Faturas</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="details">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle>Assinatura</CardTitle>
-                <CardDescription>
-                  Detalhes da sua assinatura atual
-                </CardDescription>
-              </div>
-              <Badge 
-                variant={
-                  StatusLabels[subscription.status]?.variant || 'outline'
-                }
-              >
-                {StatusLabels[subscription.status]?.label || subscription.status}
-                {subscription.cancelAtPeriodEnd && ' (Cancelamento Agendado)'}
-              </Badge>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* Plano atual com design melhorado */}
-            <div className="relative overflow-hidden rounded-lg border bg-gradient-to-b from-background to-muted/30 p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row justify-between gap-6">
-                {/* Informações do plano */}
-                <div className="flex-1">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Seu Plano Atual</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-full bg-primary/10 p-1">
-                        <CheckCircle2 className="h-6 w-6 text-primary" />
-                      </div>
-                      <h2 className="text-2xl font-bold">
-                        {subscription.plan === 'basic' && 'Plano Básico'}
-                        {subscription.plan === 'pro' && 'Plano Profissional'}
-                        {subscription.plan === 'enterprise' && 'Plano Empresarial'}
-                      </h2>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-background/60 p-3 rounded-lg border">
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          Data de Início
-                        </span>
-                      </h4>
-                      <p className="font-medium">
-                        {new Date(subscription.startDate).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    
-                    <div className="bg-background/60 p-3 rounded-lg border">
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {subscription.cancelAtPeriodEnd ? 'Termina em' : 'Próxima cobrança'}
-                        </span>
-                      </h4>
-                      <p className="font-medium">
-                        {subscription.currentPeriodEnd 
-                          ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') 
-                          : subscription.endDate 
-                            ? new Date(subscription.endDate).toLocaleDateString('pt-BR')
-                            : 'Não disponível'}
-                      </p>
-                      {subscription.daysRemaining !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          {subscription.daysRemaining} dias restantes
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Estatísticas do plano */}
-                <div className="flex flex-col justify-between bg-background/80 rounded-lg border p-4 min-w-[180px]">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Capacidade de Clientes</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="text-2xl font-bold">{subscription.clientCount}/{subscription.maxClients}</div>
-                    </div>
-                    
-                    <div className="mt-2 h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full" 
-                        style={{ 
-                          width: `${Math.min(100, (subscription.clientCount / subscription.maxClients) * 100)}%` 
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground mt-4">
-                    {subscription.maxClients - subscription.clientCount > 0 
-                      ? `Você pode adicionar mais ${subscription.maxClients - subscription.clientCount} clientes` 
-                      : 'Capacidade máxima atingida'}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Badge de status */}
-              <div className="absolute top-3 right-3">
-                <Badge 
-                  variant={StatusLabels[subscription.status]?.variant || 'outline'}
-                  className="px-3 py-1"
-                >
-                  {StatusLabels[subscription.status]?.label || subscription.status}
-                </Badge>
-              </div>
-            </div>
-            
-            {/* Alerta de cancelamento (se houver) */}
-            {isCanceled && (
-              <Alert variant="default" className="bg-muted border-amber-200">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                <AlertTitle>Cancelamento Agendado</AlertTitle>
-                <AlertDescription>
-                  Sua assinatura está agendada para cancelamento 
-                  {subscription.currentPeriodEnd 
-                    ? ` em ${new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}`
-                    : ''}. 
-                  {canReactivate && 'Você pode reativar sua assinatura até esta data.'}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-          
-          <CardFooter className="flex flex-col sm:flex-row gap-2">
-            {!isCanceled ? (
-              <>
-                <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">Cancelar Assinatura</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Cancelar Assinatura</DialogTitle>
-                      <DialogDescription>
-                        Você tem certeza que deseja cancelar sua assinatura? 
-                        Informe um motivo que nos ajude a melhorar.
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4 py-4">
-                      <Textarea
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        placeholder="Por que você está cancelando? (opcional)"
-                        className="resize-none"
-                      />
-                      
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="cancelImmediately"
-                          checked={cancelImmediately}
-                          onChange={(e) => setCancelImmediately(e.target.checked)}
-                          className="form-checkbox h-4 w-4 text-primary focus:ring-primary"
-                        />
-                        <label 
-                          htmlFor="cancelImmediately" 
-                          className="text-sm font-medium text-muted-foreground"
-                        >
-                          Cancelar imediatamente 
-                          <span className="text-xs ml-1 text-destructive">
-                            (Perderá acesso agora)
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                    
-                    <DialogFooter>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setShowCancelDialog(false)}
-                      >
-                        Voltar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={handleCancelSubscription}
-                        disabled={cancelMutation.isPending}
-                      >
-                        {cancelMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                            Processando...
-                          </>
-                        ) : (
-                          'Confirmar Cancelamento'
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                
-                {canUpgrade && (
-                  <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-                    <DialogTrigger asChild>
-                      <Button>Alterar Plano</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl">
-                      <DialogHeader>
-                        <DialogTitle>Alterar Plano</DialogTitle>
-                        <DialogDescription>
-                          Selecione o plano para o qual deseja atualizar
-                        </DialogDescription>
-                      </DialogHeader>
-                      
-                      <ScrollArea className="max-h-[70vh]">
-                        <div className="py-4">
-                          {showPaymentForm ? (
-                            <SubscriptionFormContainer
-                              planId={selectedPlan || subscription.plan}
-                              onSuccess={handleUpgradeSuccess}
-                              onCancel={() => setShowPaymentForm(false)}
-                            />
-                          ) : (
-                            <SubscriptionPlans
-                              onSelectPlan={handlePlanSelection}
-                              initialSelectedPlan={subscription.plan}
-                              highlightCurrentPlan={true}
-                            />
-                          )}
-                        </div>
-                      </ScrollArea>
-                      
-                      {!showPaymentForm && (
-                        <DialogFooter>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setShowUpgradeDialog(false)}
-                          >
-                            Cancelar
-                          </Button>
-                        </DialogFooter>
-                      )}
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </>
-            ) : (
-              canReactivate && (
-                <Button 
-                  variant="default"
-                  onClick={handleReactivateSubscription}
-                  disabled={reactivateMutation.isPending}
-                >
-                  {reactivateMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" /> 
-                      Reativar Assinatura
-                    </>
-                  )}
-                </Button>
-              )
-            )}
-          </CardFooter>
-        </Card>
-      </TabsContent>
-      
-      <TabsContent value="billing">
-        <InvoiceList />
-      </TabsContent>
-    </Tabs>
-  );
-}
-
-// Componente para listar as faturas
-function InvoiceList() {
-  const { user } = useAuth();
-  
-  // Busca as faturas do usuário
-  const { 
-    data: invoices, 
-    isLoading 
-  } = useQuery({
-    queryKey: ['/api/subscription/invoices'],
-    enabled: !!user && user.role === 'mentor',
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Faturas</CardTitle>
-          <CardDescription>
-            Seu histórico de pagamentos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="py-8 text-center">
-            <p className="text-muted-foreground">
-              Nenhuma fatura disponível
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // Componente de assinatura simplificado
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Histórico de Faturas</CardTitle>
-        <CardDescription>
-          Seu histórico de pagamentos e faturas
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="bg-muted/50">
-                <th className="px-4 py-2 text-left font-medium">Nº</th>
-                <th className="px-4 py-2 text-left font-medium">Data</th>
-                <th className="px-4 py-2 text-left font-medium">Valor</th>
-                <th className="px-4 py-2 text-left font-medium">Status</th>
-                <th className="px-4 py-2 text-left font-medium">Período</th>
-                <th className="px-4 py-2 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(invoices) && invoices.map((invoice: any) => (
-                <tr key={invoice.id} className="border-b hover:bg-muted/50">
-                  <td className="px-4 py-3">{invoice.number}</td>
-                  <td className="px-4 py-3">
-                    {new Date(invoice.created).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    {invoice.amountPaid
-                      ? `R$${invoice.amountPaid.toFixed(2)}` 
-                      : `R$${invoice.amountDue.toFixed(2)}`}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={
-                      invoice.status === 'paid' ? 'default' : 
-                      invoice.status === 'open' ? 'outline' : 'destructive'
-                    }>
-                      {invoice.status === 'paid' ? 'Pago' : 
-                       invoice.status === 'open' ? 'Pendente' : 'Falha'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs">
-                      {new Date(invoice.periodStart).toLocaleDateString('pt-BR')} - {' '}
-                      {new Date(invoice.periodEnd).toLocaleDateString('pt-BR')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {invoice.receiptUrl && (
-                      <a 
-                        href={invoice.receiptUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        <CreditCard className="h-3 w-3" />
-                        <span>Recibo</span>
-                      </a>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <CardTitle>Assinatura</CardTitle>
+            <CardDescription>
+              Detalhes da sua assinatura atual
+            </CardDescription>
+          </div>
+          <Badge 
+            variant={StatusLabels[subscription.status]?.variant || 'outline'}
+          >
+            {StatusLabels[subscription.status]?.label || subscription.status}
+            {subscription.cancelAtPeriodEnd && ' (Cancelamento Agendado)'}
+          </Badge>
         </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        {/* Plano atual com design simplificado */}
+        <div className="relative overflow-hidden rounded-lg border bg-gradient-to-b from-background to-muted/30 p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            {/* Informações do plano */}
+            <div className="mb-6">
+              <div className="rounded-full bg-primary/10 p-3 mx-auto mb-4">
+                <CheckCircle2 className="h-10 w-10 text-primary" />
+              </div>
+              <h2 className="text-3xl font-bold mb-2">
+                {subscription.plan === 'basic' && 'Plano Básico'}
+                {subscription.plan === 'pro' && 'Plano Profissional'}
+                {subscription.plan === 'enterprise' && 'Plano Empresarial'}
+              </h2>
+              
+              <Badge 
+                variant={StatusLabels[subscription.status]?.variant || 'outline'}
+                className="px-4 py-1 text-base"
+              >
+                {StatusLabels[subscription.status]?.label || subscription.status}
+              </Badge>
+            </div>
+            
+            <div className="bg-background/60 p-4 rounded-lg border w-full max-w-md">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 text-center">
+                <span className="flex items-center justify-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Validade da Assinatura
+                </span>
+              </h4>
+              <p className="font-medium text-lg text-center">
+                Até {subscription.currentPeriodEnd 
+                  ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') 
+                  : subscription.endDate 
+                    ? new Date(subscription.endDate).toLocaleDateString('pt-BR')
+                    : 'Não disponível'}
+              </p>
+              {subscription.daysRemaining !== undefined && (
+                <p className="text-sm text-muted-foreground text-center mt-1">
+                  Restam {subscription.daysRemaining} dias
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Alerta de cancelamento (se houver) */}
+        {isCanceled && (
+          <Alert variant="default" className="bg-muted border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertTitle>Cancelamento Agendado</AlertTitle>
+            <AlertDescription>
+              Sua assinatura está agendada para cancelamento 
+              {subscription.currentPeriodEnd 
+                ? ` em ${new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}`
+                : ''}. 
+              {canReactivate && 'Você pode reativar sua assinatura até esta data.'}
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
+      
+      <CardFooter className="flex flex-col sm:flex-row gap-2">
+        {!isCanceled ? (
+          <>
+            <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline">Cancelar Assinatura</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Cancelar Assinatura</DialogTitle>
+                  <DialogDescription>
+                    Você tem certeza que deseja cancelar sua assinatura? 
+                    Informe um motivo que nos ajude a melhorar.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Por que você está cancelando? (opcional)"
+                    className="resize-none"
+                  />
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="cancelImmediately"
+                      checked={cancelImmediately}
+                      onChange={(e) => setCancelImmediately(e.target.checked)}
+                      className="form-checkbox h-4 w-4 text-primary focus:ring-primary"
+                    />
+                    <label 
+                      htmlFor="cancelImmediately" 
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      Cancelar imediatamente 
+                      <span className="text-xs ml-1 text-destructive">
+                        (Perderá acesso agora)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCancelDialog(false)}
+                  >
+                    Voltar
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleCancelSubscription}
+                    disabled={cancelMutation.isPending}
+                  >
+                    {cancelMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                        Processando...
+                      </>
+                    ) : (
+                      'Confirmar Cancelamento'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {canUpgrade && (
+              <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+                <DialogTrigger asChild>
+                  <Button>Alterar Plano</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Alterar Plano</DialogTitle>
+                    <DialogDescription>
+                      Selecione o plano para o qual deseja atualizar
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <ScrollArea className="max-h-[70vh]">
+                    <div className="py-4">
+                      {showPaymentForm ? (
+                        <SubscriptionFormContainer
+                          planId={selectedPlan || subscription.plan}
+                          onSuccess={handleUpgradeSuccess}
+                          onCancel={() => setShowPaymentForm(false)}
+                        />
+                      ) : (
+                        <SubscriptionPlans
+                          onSelectPlan={handlePlanSelection}
+                          initialSelectedPlan={subscription.plan}
+                          highlightCurrentPlan={true}
+                        />
+                      )}
+                    </div>
+                  </ScrollArea>
+                  
+                  {!showPaymentForm && (
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowUpgradeDialog(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </DialogFooter>
+                  )}
+                </DialogContent>
+              </Dialog>
+            )}
+          </>
+        ) : (
+          canReactivate && (
+            <Button 
+              variant="default"
+              onClick={handleReactivateSubscription}
+              disabled={reactivateMutation.isPending}
+            >
+              {reactivateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" /> 
+                  Reativar Assinatura
+                </>
+              )}
+            </Button>
+          )
+        )}
+      </CardFooter>
     </Card>
   );
 }
