@@ -10,10 +10,30 @@ import {
   testResponseAnswers, 
   testResults,
   gamificationPoints,
-  pointsHistory
+  pointsHistory,
+  clients
 } from "@shared/schema";
 
 const router = Router();
+
+// Função auxiliar para obter o ID do cliente a partir do ID do usuário
+async function getClientIdFromUserId(userId: number): Promise<number> {
+  try {
+    const [client] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(eq(clients.userId, userId));
+    
+    if (!client) {
+      throw new Error(`Cliente não encontrado para o usuário ${userId}`);
+    }
+    
+    return client.id;
+  } catch (error) {
+    console.error("Erro ao buscar cliente:", error);
+    throw error;
+  }
+}
 
 // Algoritmo para calcular os resultados do teste de Eneagrama
 function calculateEnneagram(answers: Record<string, string>) {
@@ -128,13 +148,16 @@ router.get("/in-progress", async (req, res) => {
   }
 
   try {
-    // Buscar atribuição de teste para o usuário logado
+    // Obter o ID do cliente a partir do ID do usuário
+    const clientId = await getClientIdFromUserId(req.user.id);
+    
+    // Buscar atribuição de teste para o cliente
     const [assignment] = await db
       .select()
       .from(testAssignments)
       .where(
         and(
-          eq(testAssignments.clientId, req.user.id),
+          eq(testAssignments.clientId, clientId),
           eq(testAssignments.status, "in_progress")
         )
       );
