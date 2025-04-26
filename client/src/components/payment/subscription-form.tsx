@@ -168,7 +168,9 @@ export function SubscriptionFormContainer({
     // Se for simulado, estamos em modo de desenvolvimento, então usamos options diferentes
     ...(isSimulated ? { 
       mode: 'setup' as const,
-      appearance: { theme: 'stripe' }
+      appearance: { theme: 'stripe' },
+      // Usar moeda da resposta ou padrão 'brl'
+      currency: paymentData?.currency || 'brl'
     } : {})
   };
   

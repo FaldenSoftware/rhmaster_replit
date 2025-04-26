@@ -204,7 +204,8 @@ router.post("/create-payment-intent", isAuthenticated, isMentor, async (req, res
           // Adicionando informações extras para o frontend saber que é um pagamento simulado
           simulated: true,
           planId: planId,
-          amount: planPrices[planId as keyof typeof planPrices]
+          amount: planPrices[planId as keyof typeof planPrices],
+          currency: 'brl'  // Adicionando moeda para o modo simulado
         });
       } catch (err) {
         console.error("Erro ao atualizar informações de pagamento do usuário:", err);
