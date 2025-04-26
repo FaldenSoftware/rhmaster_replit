@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { assistantRouter } from "./routes/assistant";
 import subscriptionRouter from "./routes/subscription";
+import behavioralProfileRouter from "./routes/tests/behavioral-profile";
+import emotionalIntelligenceRouter from "./routes/tests/emotional-intelligence";
+import enneagramRouter from "./routes/tests/enneagram";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up authentication routes
@@ -14,6 +17,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar as rotas de assinatura e pagamento
   app.use("/api/subscription", subscriptionRouter);
+  
+  // Registrar as rotas dos testes comportamentais
+  app.use("/api/tests/behavioral-profile", behavioralProfileRouter);
+  app.use("/api/tests/emotional-intelligence", emotionalIntelligenceRouter);
+  app.use("/api/tests/enneagram", enneagramRouter);
 
   // API routes
   app.get("/api/mentors", async (req, res) => {
