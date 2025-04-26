@@ -144,15 +144,9 @@ const clientsData: Client[] = [
   }
 ];
 
-import { DashboardLayout } from "@/layouts/dashboard-layout";
-
 export default function TestAssignmentKanban() {
   return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <TestAssignmentKanbanContent />
-      </div>
-    </DashboardLayout>
+    <TestAssignmentKanbanContent />
   );
 }
 
